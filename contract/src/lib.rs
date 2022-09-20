@@ -305,6 +305,7 @@ impl DaoCreationContract {
     }
 
     // create proposal
+    #[payable]
     pub fn create_proposal(
         &mut self,
         dao_name: String,
@@ -332,9 +333,9 @@ impl DaoCreationContract {
         }
         dao.create_proposal(proposal_name, description, duration_days, duration_hours, duration_min);
         self.records.replace(index, &dao);
-        //let amount= 5000000000000000000000000;
-        //let benificiary= "daolightency.testnet".to_string().try_into().unwrap();
-        //let _payment=self.pay(amount,benificiary);
+        let amount= 5000000000000000000000000;
+        let benificiary= "daolightency.testnet".to_string().try_into().unwrap();
+        let _payment=self.pay(amount,benificiary);
     }
 
     // get all proposals in a specific dao 

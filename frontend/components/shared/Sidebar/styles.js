@@ -13,6 +13,7 @@ export const SSidebar = styled.div`
   display: block;
 `
 
+
 export const SSidebarButton = styled.button`
   ${btnReset};
   position: absolute;
@@ -80,7 +81,7 @@ export const SLinkContainer = styled.div`
   background: ${({ theme, isActive }) =>
     !isActive ? `transparent` : theme.bg3};
   border-radius: ${v.borderRadius};
-  margin: 8px 0;
+  margin: 8px 0 0 0.3rem;
   transition: 0.5s ease-in-out;
   :hover {
     box-shadow: 0 0 10px 1px #ffde00;
@@ -94,6 +95,16 @@ export const SLinkContainer = styled.div`
 `
 
 export const SLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  font-size: 16px;
+  padding: calc(${v.smSpacing} - 2px) 0;
+  width: fit-content;
+`
+
+export const SLinka = styled.a`
   display: flex;
   align-items: center;
   text-decoration: none;

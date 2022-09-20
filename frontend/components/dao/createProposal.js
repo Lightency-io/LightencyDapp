@@ -7,6 +7,8 @@ import Loader2 from '../shared/Loading/loader2'
 import { classNames } from 'primereact/utils'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
+import { Dialog } from 'primereact/dialog';
+
 
 const CreateProposal = ({ formik, onHide, loader }) => {
   return (

@@ -76,7 +76,18 @@ const HomePage = () => {
           </span>
           <div>
             <h4 className="mb-4 mt-4 text-center">{product.title}</h4>
-            <p>{product.paragraph}</p>
+            <p
+              style={{
+                fontSize: '.8rem',
+                paddingLeft: '10%',
+                paddingRight: '10%',
+                letterSpacing: '.1rem',
+                lineHeight: '2rem',
+                marginTop: '2.5rem'
+              }}
+            >
+              {product.paragraph}
+            </p>
           </div>
         </div>
       </div>

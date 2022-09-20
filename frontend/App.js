@@ -17,6 +17,7 @@ import Swal from 'sweetalert2'
 import Routes from './Routes'
 
 import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
+import { GiHamburgerMenu } from 'react-icons/gi'
 
 export const ThemeContext = React.createContext(null)
 
@@ -25,6 +26,8 @@ export default function App() {
   const [greeting, setGreeting] = React.useState()
   const [theme, setTheme] = useState('light')
   const themeStyle = theme === 'light' ? lightTheme : darkTheme
+
+  const [show, setShow] = useState(false)
 
   // when the user has not yet interacted with the form, disable the button
   const [buttonDisabled, setButtonDisabled] = React.useState(true)
@@ -76,9 +79,22 @@ export default function App() {
             <title>Lightency platform - DAO protocol</title>
           </Helmet>
           <div id="content">
-            <Navbar logout={logout} login={login} />
+            <Navbar
+              logout={logout}
+              login={login}
+              show={show}
+              setShow={setShow
+              }
+            />
             <Layout>
               <div className="mt-4" style={{ paddingTop: '50px' }}>
+                {/* <div className="mt-4" style={{ paddingTop: '50px' }}>
+                  <header className="header">
+                    <div className="header-toggle">
+                      <GiHamburgerMenu />
+                    </div>
+                  </header>
+                </div> */}
                 <Routes />
               </div>
             </Layout>

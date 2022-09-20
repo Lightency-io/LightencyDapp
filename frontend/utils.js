@@ -77,6 +77,21 @@ export async function initContract() {
       ],
     }
   );
+
+  window.stake = await new Contract(
+    window.walletConnection.account(),
+    "lightencywallet.testnet",
+    {
+      viewMethods: [
+
+      ],
+      changeMethods: [
+        "stake",
+        "unstake",
+        "withdraw"
+      ],
+    }
+  );
 }
 
 export function logout() {
