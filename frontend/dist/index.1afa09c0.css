@@ -74,12 +74,12 @@ body {
 
 .nav-logo, .nav-link {
   grid-template-columns: max-content max-content;
-  column-gap: 1rem;
+  column-gap: 2rem;
   display: grid;
 }
 
 .nav-logo {
-  margin-bottom: 5px;
+  margin-bottom: 2rem;
 }
 
 .nav-logo-icon {
