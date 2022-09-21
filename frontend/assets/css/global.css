@@ -50,7 +50,7 @@ body {
   width: var(--nav-width);
   background-color: black;
   padding-top: 1rem;
-  transition: 0.5s;
+ 
 }
 
 .nav {

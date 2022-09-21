@@ -46,7 +46,6 @@ body {
   width: var(--nav-width);
   background-color: #000;
   padding-top: 1rem;
-  
   position: fixed;
   top: 0;
   left: -30%;
