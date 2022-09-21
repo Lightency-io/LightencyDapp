@@ -1,14 +1,14 @@
-import styled from 'styled-components'
+import styled from "styled-components";
 
 export const NavbarContainer = styled.nav`
   width: 100%;
-  height: 40px;
+  height: 60px;
   background-color: black;
   display: flex;
   flex-direction: column;
-  opacity: 40%;
+
   position: absolute;
-`
+`;
 
 export const RightContainer = styled.div`
   flex: 30%;
@@ -16,19 +16,21 @@ export const RightContainer = styled.div`
   justify-content: flex-end;
   padding-right: 50px;
   background-color: salamon;
-`
+`;
 
 export const ConnectButton = styled.button`
-  margin-top: 0.2rem;
+  margin-top: 0.4rem;
   width: 10rem;
-  height: 2rem;
-  position: relative;
+  height: 3rem;
+
   background-color: #ffde00;
-  border-radius: 20%;
-  color: black;
+  border-radius: 9px;
+  color: white;
+
+  border: none;
   font-weight: bold;
-`
+`;
 
 export const TranslateButton = styled.button`
   margin-top: 0.2rem;
-`
+`;
