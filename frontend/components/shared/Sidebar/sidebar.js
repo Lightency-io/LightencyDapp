@@ -1,5 +1,5 @@
-import React, { useContext, useRef, useState } from 'react'
-import { logoPNG } from '../../../assets/img'
+import React, { useContext, useRef, useState } from "react";
+import { logoPNG } from "../../../assets/img";
 import {
   SDivider,
   SLink,
@@ -17,9 +17,9 @@ import {
   SThemeLabel,
   SThemeToggler,
   SToggleThumb,
-} from './styles'
-import { ThemeContext } from '../../../App'
-import { Link, useLocation } from 'react-router-dom'
+} from "./styles";
+import { ThemeContext } from "../../../App";
+import { Link, useLocation } from "react-router-dom";
 
 // Icons
 import {
@@ -30,46 +30,44 @@ import {
   AiOutlineSwap,
   AiFillLinkedin,
   AiOutlineGlobal,
-} from 'react-icons/ai'
-import { VscOrganization } from 'react-icons/vsc'
-import { GrStackOverflow } from 'react-icons/gr'
-import { MdLogout, MdOutlineOutbond } from 'react-icons/md'
-import { BsTwitter } from 'react-icons/bs'
-import { GiHamburgerMenu } from 'react-icons/gi'
-import { BiX } from 'react-icons/bi'
-import Navbar from '../Navbar/navbar'
-import { login, logout } from '../../../utils'
+} from "react-icons/ai";
+import { VscOrganization } from "react-icons/vsc";
+import { GrStackOverflow } from "react-icons/gr";
+import { MdLogout, MdOutlineOutbond } from "react-icons/md";
+import { BsTwitter } from "react-icons/bs";
+import { GiHamburgerMenu } from "react-icons/gi";
+import { BiX } from "react-icons/bi";
+import Navbar from "../Navbar/navbar";
+import { login, logout } from "../../../utils";
 
 const Sidebar = () => {
-  const searchRef = useRef(null)
-  const { setTheme, theme } = useContext(ThemeContext)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { pathname } = useLocation()
-  const [show, setShow] = useState(false)
+  const searchRef = useRef(null);
+  const { setTheme, theme } = useContext(ThemeContext);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { pathname } = useLocation();
+  const [show, setShow] = useState(false);
 
   const searchClickHandler = () => {
     if (!show) {
-      setShow(true)
-      searchRef.current.focus()
+      setShow(true);
+      searchRef.current.focus();
     } else {
       // search functionality
     }
-  }
+  };
   return (
-    <main className={show ? 'main space-toggle' : 'main'}>
-      <header className={`header ${show ? 'space-toggle' : null}`}>
-        <div className="header-toggle" onClick={() => setShow(!show)}>
-          {!show ? <GiHamburgerMenu /> : <BiX />}
-        </div>
-      </header>
-      <aside className={`sidebar ${show ? 'show' : null}`}>
+    <main className={show ? "main space-toggle" : "main"}>
+      <aside className={`sidebar ${show ? "show" : null}`}>
         <nav className="navbar">
           <Link to="/" className="nav-logo">
             <SLogo>
               <img src={logoPNG} alt="Logo" />
-            </SLogo>{' '}
+            </SLogo>{" "}
             {/* here comes the Lightency title  */}
           </Link>
+          <div className="header-toggle" onClick={() => setShow(!show)}>
+            {!show ? <GiHamburgerMenu /> : <BiX />}
+          </div>
           <SSearch
             onClick={() => searchClickHandler}
             style={!show ? { width: `fit-content` } : {}}
@@ -116,14 +114,14 @@ const Sidebar = () => {
                 <SLinkIcon>{icon}</SLinkIcon>
                 {show && (
                   <SLinkLabel>
-                    {' '}
+                    {" "}
                     <p style={{ marginBottom: 0 }}>{label}</p>
                   </SLinkLabel>
                 )}
               </SLink>
             </SLinkContainer>
           ))}
-          <SDivider />{' '}
+          <SDivider />{" "}
           {thirdLinkArray.map(({ icon, label, to }) => (
             <SLinkContainer
               key={label}
@@ -131,13 +129,13 @@ const Sidebar = () => {
             >
               <SLinka
                 href={to}
-                target={'_blank'}
+                target={"_blank"}
                 style={!show ? { width: `fit-content` } : {}}
               >
                 <SLinkIcon>{icon}</SLinkIcon>
                 {show && (
                   <SLinkLabel>
-                    {' '}
+                    {" "}
                     <p style={{ marginBottom: 0 }}>{label} </p>
                   </SLinkLabel>
                 )}
@@ -159,69 +157,69 @@ const Sidebar = () => {
         </nav>
       </aside>
     </main>
-  )
-}
+  );
+};
 
 const linksArray = [
   {
-    label: 'Home',
+    label: "Home",
     icon: <AiOutlineHome />,
-    to: '/home',
+    to: "/home",
     notification: 0,
   },
   {
-    label: 'Governance',
+    label: "Governance",
     icon: <VscOrganization />,
-    to: '/governance',
+    to: "/governance",
     notification: 0,
   },
   {
-    label: 'Swap',
+    label: "Swap",
     icon: <AiOutlineSwap />,
-    to: '/swap',
+    to: "/swap",
     notification: 0,
   },
   {
-    label: 'Stake',
+    label: "Stake",
     icon: <GrStackOverflow />,
-    to: '/stake',
+    to: "/stake",
     notification: 0,
   },
   {
-    label: 'Bond',
+    label: "Bond",
     icon: <MdOutlineOutbond />,
-    to: '/bond',
+    to: "/bond",
     notification: 0,
   },
-]
+];
 
 const secondaryLinkArray = [
   {
-    label: 'Settings',
+    label: "Settings",
     icon: <AiFillSetting />,
   },
   {
-    label: 'Logout',
+    label: "Logout",
     icon: <MdLogout />,
   },
-]
+];
 
 const thirdLinkArray = [
   {
-    label: 'Twitter',
-    to: 'https://twitter.com/Lightencyio',
+    label: "Twitter",
+    to: "https://twitter.com/Lightencyio",
     icon: <BsTwitter />,
   },
   {
-    label: 'Linkedin',
-    to: 'https://www.linkedin.com/company/electrify-network/',
+    label: "Linkedin",
+    to: "https://www.linkedin.com/company/electrify-network/",
     icon: <AiFillLinkedin />,
   },
   {
-    label: 'Website',
-    to: 'https://lightency.io/#/',
+    label: "Website",
+    to: "https://lightency.io/#/",
     icon: <AiOutlineGlobal />,
   },
-]
+];
 
-export default Sidebar
+export default Sidebar;
