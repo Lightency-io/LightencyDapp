@@ -80,20 +80,6 @@ export default function App() {
             <title>Lightency platform - DAO protocol</title>
           </Helmet>
           <Wrapper>
-            {/* <Navbar logout={logout} login={login} />
-            <Layout logout={logout} login={login}>
-              <div className="mt-4" style={{ paddingTop: '50px' }}>
-                <div className="mt-4" style={{ paddingTop: '50px' }}>
-                  <header className="header">
-                    <div className="header-toggle">
-                      <GiHamburgerMenu />
-                    </div>
-                  </header>
-                </div>
-                <Routes />
-              </div>
-            </Layout> */}
-            {/* <Navbar logout={logout} login={login} /> */}
             <NavbarContainer>
               <Navbar logout={logout} login={login} />
             </NavbarContainer>
@@ -162,7 +148,7 @@ export const Wrapper = styled.div`
 
   @media only screen and (max-width: 550px) {
     grid-template-columns: 1fr;
-    grid-template-rows: 0.4fr 7fr 0.2fr;
+    grid-template-rows: 0.5fr 6.9fr 0.2fr;
     grid-template-areas:
       'nav'
       'main'
@@ -174,6 +160,10 @@ export const NavbarContainer = styled.nav`
   grid-area: nav;
   background-color: black;
   opacity: 40%;
+
+  @media only screen and (max-width: 550px) {
+    height: 1.5rem;
+  }
 `
 
 export const MainContainer = styled.main`

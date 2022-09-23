@@ -387,7 +387,7 @@ const Section = styled.section`
   height: 100%;
   width: 100%;
   @media only screen and (max-width: 550px) {
-    width: 23rem;
+    width: 22rem;
   }
 
   .title-container {

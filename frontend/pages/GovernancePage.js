@@ -156,7 +156,7 @@ const Section = styled.section`
   width: 100%;
 
   @media only screen and (max-width: 550px) {
-    width: 23rem;
+    width: 22rem;
   }
   .p-menuitem-link {
     :hover {

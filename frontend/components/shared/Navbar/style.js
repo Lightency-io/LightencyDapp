@@ -1,5 +1,10 @@
 import styled from 'styled-components'
 
+export const FlexContainer = styled.nav`
+  display: flex;
+  flex-direction: row;
+`
+
 export const NavbarContainer = styled.nav`
   width: 100%;
   height: 40px;
@@ -16,6 +21,17 @@ export const RightContainer = styled.div`
   justify-content: flex-end;
   padding-right: 50px;
   background-color: salamon;
+`
+export const LeftContainer = styled.div`
+  display: none;
+
+  @media only screen and (max-width: 550px) {
+    flex: 30%;
+    display: flex;
+    justify-content: flex-start;
+    padding-left: 1rem;
+    background-color: salamon;
+  }
 `
 
 export const ConnectButton = styled.button`

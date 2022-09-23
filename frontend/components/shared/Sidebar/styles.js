@@ -131,10 +131,6 @@ export const SLinkLabel = styled.span`
   display: block;
   flex: 1;
   margin-left: ${v.smSpacing};
-
-  @media only screen and (max-width: 550px) {
-    display: none;
-  }
 `
 
 export const SLinkNotification = styled.div`
