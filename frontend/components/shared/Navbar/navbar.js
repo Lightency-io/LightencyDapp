@@ -1,29 +1,30 @@
-import React, { useState } from "react";
-import { ConnectButton, NavbarContainer, RightContainer } from "./style";
+import React from 'react'
+import { ConnectButton, NavbarContainer, RightContainer } from './style'
 
 //React icons
-import { GrConnect } from "react-icons/gr";
-import { Button } from "primereact/button";
-import { GiHamburgerMenu } from "react-icons/gi";
-import { BiX } from "react-icons/bi";
+import { GrConnect } from 'react-icons/gr'
+import { Button } from 'primereact/button'
 
 const Navbar = ({ logout, login }) => {
-  const [show, setShow] = useState(false);
-
   return (
-    <NavbarContainer>
+    <nav>
       <RightContainer>
-        <div>
-          <p style={{padding : 20}}>{window.accountId}</p>
-        </div>
         {window.walletConnection.isSignedIn() ? (
-          <ConnectButton onClick={logout}>logout</ConnectButton>
+          <ConnectButton onClick={logout}>
+            <GrConnect style={{ marginRight: '8px' }} />
+            {window.accountId}
+          </ConnectButton>
         ) : (
-          <ConnectButton onClick={login}> Connect </ConnectButton>
+          <Button
+            className="mt-1"
+            style={{ height: '2rem' }}
+            label="Connect wallet"
+            onClick={login}
+          />
         )}
       </RightContainer>
-    </NavbarContainer>
-  );
-};
+    </nav>
+  )
+}
 
-export default Navbar;
+export default Navbar

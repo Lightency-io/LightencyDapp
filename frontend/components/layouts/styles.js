@@ -4,6 +4,7 @@ import { v } from '../../styles/variables'
 
 export const SLayout = styled.div`
   display: flex;
+  height: 100vh;
 `
 
 export const SMain = styled.main`

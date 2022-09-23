@@ -93,16 +93,21 @@ const GovernancePage = () => {
 
   return (
     <>
-      <Section>
-        <BreadCrumb model={items} home={home} />
-      </Section>
-
       <div className="container mt-4">
         <div className="row">
-          <div className="col-md-8">
-            <Chart1 />
+          <div className="col-md-12">
+            <Section>
+              <BreadCrumb model={items} home={home} />
+            </Section>
           </div>
-          <div className="col-md-4">
+        </div>
+        <div className="row mt-4">
+          <div className="col-md-8">
+            <Section>
+              <Chart1 />
+            </Section>
+          </div>
+          <div className="col-md-4 phone">
             <Section>
               <div style={{ paddingLeft: '28%', paddingTop: '5%' }}>
                 <Loading />
@@ -112,16 +117,18 @@ const GovernancePage = () => {
         </div>
         <div className="row mt-4">
           <div className="col-md-8">
-            <CreateDao
-              formik={formik}
-              isLoading={isLoading}
-              activeIndex={activeIndex}
-              setActiveIndex={setActiveIndex}
-              goNext={goNext}
-              goPrevious={goPrevious}
-            />
+            <Section>
+              <CreateDao
+                formik={formik}
+                isLoading={isLoading}
+                activeIndex={activeIndex}
+                setActiveIndex={setActiveIndex}
+                goNext={goNext}
+                goPrevious={goPrevious}
+              />
+            </Section>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-4 phone">
             <Section>
               <div style={{ paddingLeft: '28%', paddingTop: '5%' }}>
                 <Loading />
@@ -131,7 +138,9 @@ const GovernancePage = () => {
         </div>
         <div className="row mt-4">
           <div className="col-md-12">
-            <DaoList reload={reload} setReload={setReload} />
+            <Section>
+              <DaoList reload={reload} setReload={setReload} />
+            </Section>
           </div>
         </div>
       </div>
@@ -145,6 +154,10 @@ const Section = styled.section`
   padding: 1rem;
   height: 100%;
   width: 100%;
+
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
   .p-menuitem-link {
     :hover {
       .p-menuitem-text {

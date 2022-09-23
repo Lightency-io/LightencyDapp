@@ -8,7 +8,7 @@ import getConfig from './config'
 import { darkTheme, lightTheme } from './styles/theme'
 import { GlobalStyle } from './styles/globalStyles'
 import { Helmet } from 'react-helmet'
-import { ThemeProvider } from 'styled-components'
+import styled, { ThemeProvider } from 'styled-components'
 import Navbar from './components/shared/Navbar/navbar'
 import Layout from './components/layouts/layout'
 import Swal from 'sweetalert2'
@@ -18,6 +18,7 @@ import Routes from './Routes'
 
 import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import { GiHamburgerMenu } from 'react-icons/gi'
+import Sidebar from './components/shared/Sidebar/sidebar'
 
 export const ThemeContext = React.createContext(null)
 
@@ -27,7 +28,7 @@ export default function App() {
   const [theme, setTheme] = useState('light')
   const themeStyle = theme === 'light' ? lightTheme : darkTheme
 
-  const [show, setShow] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // when the user has not yet interacted with the form, disable the button
   const [buttonDisabled, setButtonDisabled] = React.useState(true)
@@ -78,27 +79,37 @@ export default function App() {
           <Helmet>
             <title>Lightency platform - DAO protocol</title>
           </Helmet>
-          <div id="content">
-            <Navbar
-              logout={logout}
-              login={login}
-              show={show}
-              setShow={setShow
-              }
-            />
-            <Layout>
+          <Wrapper>
+            {/* <Navbar logout={logout} login={login} />
+            <Layout logout={logout} login={login}>
               <div className="mt-4" style={{ paddingTop: '50px' }}>
-                {/* <div className="mt-4" style={{ paddingTop: '50px' }}>
+                <div className="mt-4" style={{ paddingTop: '50px' }}>
                   <header className="header">
                     <div className="header-toggle">
                       <GiHamburgerMenu />
                     </div>
                   </header>
-                </div> */}
+                </div>
                 <Routes />
               </div>
-            </Layout>
-          </div>
+            </Layout> */}
+            {/* <Navbar logout={logout} login={login} /> */}
+            <NavbarContainer>
+              <Navbar logout={logout} login={login} />
+            </NavbarContainer>
+            <MainContainer>
+              <Routes />
+            </MainContainer>
+            <SidebarContainer>
+              <Sidebar
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                logout={logout}
+                login={login}
+              />
+            </SidebarContainer>
+            <FooterContainer>Footer</FooterContainer>
+          </Wrapper>
         </ThemeProvider>
       </ThemeContext.Provider>
     </>
@@ -137,3 +148,47 @@ function Notification() {
     </aside>
   )
 }
+
+export const Wrapper = styled.div`
+  display: grid;
+  height: 100vh;
+  grid-template-columns: 0.2fr 1.5fr 1fr 1fr;
+  grid-template-rows: 0.2fr 3.4fr 0.1fr;
+  grid-template-areas:
+    'sidebar nav nav nav'
+    'sidebar main main main'
+    'sidebar footer footer footer';
+  grid-gap: 0.2rem;
+
+  @media only screen and (max-width: 550px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0.4fr 7fr 0.2fr;
+    grid-template-areas:
+      'nav'
+      'main'
+      'footer';
+  }
+`
+
+export const NavbarContainer = styled.nav`
+  grid-area: nav;
+  background-color: black;
+  opacity: 40%;
+`
+
+export const MainContainer = styled.main`
+  grid-area: main;
+`
+
+export const SidebarContainer = styled.div`
+  background: black;
+  grid-area: sidebar;
+  @media only screen and (max-width: 550px) {
+    display: none;
+  }
+`
+
+export const FooterContainer = styled.div`
+  background: #1de9b6;
+  grid-area: footer;
+`

@@ -83,7 +83,7 @@ const HomePage = () => {
                 paddingRight: '10%',
                 letterSpacing: '.1rem',
                 lineHeight: '2rem',
-                marginTop: '2.5rem'
+                marginTop: '2.5rem',
               }}
             >
               {product.paragraph}
@@ -95,20 +95,28 @@ const HomePage = () => {
   }
 
   return (
-    <Section>
-      <div className="carousel-demo">
-        <div className="container">
-          <Carousel
-            className="mb-4"
-            value={products}
-            numVisible={3}
-            numScroll={3}
-            responsiveOptions={responsiveOptions}
-            itemTemplate={productTemplate}
-          />
+    <>
+      <div className="container">
+        <div className="row">
+          <div className="col-md-12">
+            <Section className="mt-4 mb-4">
+              <div className="carousel-demo">
+                <div className="container">
+                  <Carousel
+                    className="mb-4"
+                    value={products}
+                    numVisible={3}
+                    numScroll={3}
+                    responsiveOptions={responsiveOptions}
+                    itemTemplate={productTemplate}
+                  />
+                </div>
+              </div>
+            </Section>
+          </div>
         </div>
       </div>
-    </Section>
+    </>
   )
 }
 const Section = styled.section`
@@ -117,6 +125,11 @@ const Section = styled.section`
   padding: 1rem;
   height: 100%;
   width: 100%;
+
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
+
   .title-container {
     display: flex;
     justify-content: space-between;

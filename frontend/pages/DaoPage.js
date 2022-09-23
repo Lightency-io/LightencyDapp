@@ -113,94 +113,88 @@ const DaoPage = () => {
 
   return (
     <>
-      <Section>
-        <BreadCrumb model={items} home={home} />
-      </Section>
-      <div className="container mt-4">
-        <div className="row">
+      <div className="container">
+        <div className="row mt-4">
+          <Section>
+            <BreadCrumb model={items} home={home} />
+          </Section>
+        </div>
+        <div className="row mt-4">
           <div className="col-md-12">
-            <div id="content" className="content content-full-width">
-              <div className="profile">
-                <div className="profile-header">
-                  <div className="profile-header-cover"></div>
-                  <div className="profile-header-content">
-                    <div className="profile-header-img">
-                      <img
-                        src="https://uploads-ssl.webflow.com/628cf2e86851d26b00615819/628cf2e86851d2bb5d615855_Sun%20circle%201%402x.png"
-                        alt=""
-                      />
-                    </div>
+            <Section>
+              <div id="content" className="content content-full-width">
+                <div className="profile">
+                  <div className="profile-header">
+                    <div className="profile-header-cover"></div>
+                    <div className="profile-header-content">
+                      <div className="profile-header-img">
+                        <img
+                          src="https://uploads-ssl.webflow.com/628cf2e86851d26b00615819/628cf2e86851d2bb5d615855_Sun%20circle%201%402x.png"
+                          alt=""
+                        />
+                      </div>
 
-                    <div className="profile-header-info">
-                      <h4 className="m-t-10 m-b-5">{currentDao.dao_name}</h4>
-                      <p className="m-b-10">{currentDao.dao_purpose}</p>
-                      <button
-                        className="btn btn-sm btn-info mb-2"
-                        style={{ backgroundColor: '#ffde00' }}
-                        onClick={() => onClick('displayBasic2')}
-                      >
-                        Create new proposal
-                      </button>
+                      <div className="profile-header-info">
+                        <h4 className="m-t-10 m-b-5">{currentDao.dao_name}</h4>
+                        <p className="m-b-10">{currentDao.dao_purpose}</p>
+                        <button
+                          className="btn btn-sm btn-info mb-2"
+                          style={{ backgroundColor: '#ffde00' }}
+                          onClick={() => onClick('displayBasic2')}
+                        >
+                          Create new proposal
+                        </button>
+                      </div>
                     </div>
+                    <ul className="profile-header-tab nav nav-tabs">
+                      <li className="nav-item">
+                        <Link
+                          to=""
+                          className={
+                            selectedSubMenu === 'landing'
+                              ? 'nav-link_ active'
+                              : 'nav-link_'
+                          }
+                          onClick={() => setSelectedSubMenu('landing')}
+                        >
+                          Home
+                        </Link>
+                      </li>
+                      <li className="nav-item">
+                        <Link
+                          to="proposals"
+                          className={
+                            selectedSubMenu === 'proposals'
+                              ? 'nav-link_ active'
+                              : 'nav-link_'
+                          }
+                          onClick={() => setSelectedSubMenu('proposals')}
+                        >
+                          Proposals
+                        </Link>
+                      </li>
+                      <li className="nav-item">
+                        <Link to="funds" className="nav-link_">
+                          Funds
+                        </Link>
+                      </li>
+                      <li className="nav-item">
+                        <Link to="members" className="nav-link_">
+                          Members
+                        </Link>
+                      </li>
+                    </ul>
                   </div>
-                  <ul className="profile-header-tab nav nav-tabs">
-                    <li className="nav-item">
-                      <Link
-                        to=""
-                        className={
-                          selectedSubMenu === 'landing'
-                            ? 'nav-link_ active'
-                            : 'nav-link_'
-                        }
-                        onClick={() => setSelectedSubMenu('landing')}
-                      >
-                        Home
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link
-                        to="proposals"
-                        className={
-                          selectedSubMenu === 'proposals'
-                            ? 'nav-link_ active'
-                            : 'nav-link_'
-                        }
-                        onClick={() => setSelectedSubMenu('proposals')}
-                      >
-                        Proposals
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link to="funds" className="nav-link_">
-                        Funds
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link to="members" className="nav-link_">
-                        Members
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link to="settings" className="nav-link_">
-                        Settings
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link to="polls" className="nav-link_  show">
-                        Polls
-                      </Link>
-                    </li>
-                  </ul>
                 </div>
               </div>
-            </div>
+            </Section>
           </div>
         </div>
         <Outlet context={[reload, setReload]} />
         <Dialog
           header={loader ? 'Please Wait' : 'Create proposal'}
           visible={displayBasic2}
-          style={{ width: '50vw' }}
+          className="dialog"
           onHide={() => onHide('displayBasic2')}
         >
           <CreateProposal formik={formik} onHide={onHide} loader={loader} />
@@ -216,6 +210,11 @@ const Section = styled.section`
   padding: 1rem;
   height: 100%;
   width: 100%;
+
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
+
   .p-menuitem-link {
     :hover {
       .p-menuitem-text {

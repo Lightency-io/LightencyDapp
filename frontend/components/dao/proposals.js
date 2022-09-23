@@ -233,7 +233,7 @@ const Proposals = () => {
   }
 
   return (
-    <Section className="mt-4">
+    <Section className="mt-4 mb-4">
       <div className="title-container">
         <div className="title">
           <h4>Proposals</h4>
@@ -386,6 +386,10 @@ const Section = styled.section`
   padding: 1rem;
   height: 100%;
   width: 100%;
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
+
   .title-container {
     display: flex;
     justify-content: space-between;

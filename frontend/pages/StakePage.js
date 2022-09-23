@@ -108,12 +108,16 @@ const StakePage = () => {
   }
   return (
     <>
-      <Section>
-        <BreadCrumb model={items} home={home} />
-      </Section>
       <div className="container mt-4">
         <div className="row">
-          <div className="col-md-3">
+          <div className="col-md-12">
+            <Section>
+              <BreadCrumb model={items} home={home} />
+            </Section>
+          </div>
+        </div>
+        <div className="row mt-4">
+          <div className="col-md-3 phone">
             <Section>
               <div className="title-container">
                 <div className="title">
@@ -135,7 +139,7 @@ const StakePage = () => {
               </p>
             </Section>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-3 phone">
             <Section>
               <div className="title-container">
                 <div className="title">
@@ -157,7 +161,7 @@ const StakePage = () => {
               </p>
             </Section>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-3 phone">
             <Section>
               <div style={{ paddingLeft: '3.2rem' }}>
                 <Loading />
@@ -173,7 +177,7 @@ const StakePage = () => {
           </div>
         </div>
         <div className="row mt-4">
-          <div className="col-md-12">
+          <div className="col-md-12 phone">
             <Section>
               <DataTable
                 value={stakingPools}
@@ -191,11 +195,10 @@ const StakePage = () => {
           </div>
         </div>
       </div>
-
       <Dialog
         header="Staking"
         visible={displayBasic}
-        style={{ width: '50vw' }}
+        className="dialog"
         onHide={() => onHide('displayBasic')}
       >
         {!loader ? (
@@ -256,6 +259,11 @@ const Section = styled.section`
   padding: 1rem;
   height: 100%;
   width: 100%;
+
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
+
   .title-container {
     display: flex;
     justify-content: space-between;

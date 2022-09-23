@@ -2,7 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 
 const Dashboards = () => {
-  return <Section className="mt-4">Dashboards</Section>
+  return <Section className="mt-4 mb-4">Dashboards</Section>
 }
 
 const Section = styled.section`

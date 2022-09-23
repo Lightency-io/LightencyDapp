@@ -32,45 +32,51 @@ const SwapPage = () => {
   }
   return (
     <>
-      <Section>
-        <BreadCrumb model={items} home={home} />
-      </Section>
-      <Section className="mt-4">
-        <div className="container">
-          <div className="title-container">
-            <div className="title">
-              <h4>DEX's</h4>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-md-4">
-              <Card style={{ width: '14em' }} header={header}>
-                <div className="text-center">
-                  <Button
-                    onClick={() =>
-                      window.open(
-                        'https://testnet.ref.finance/#usdn.testnet|usdt.fakes.testnet',
-                        '_blank',
-                      )
-                    }
-                    label="Swap"
-                    icon="pi pi-arrows-h"
-                  />
-                </div>
-              </Card>
-            </div>
+      <div className="container">
+        <div className="row mt-4">
+          <div className="col-md-12">
+            <Section>
+              <BreadCrumb model={items} home={home} />
+            </Section>
           </div>
         </div>
-      </Section>
-      <Section className="mt-4">
-        <div className="container">
-          <div className="title-container">
-            <div className="title">
-              <h4>CEX's</h4>
+        <Section className="mt-4">
+          <div className="container">
+            <div className="title-container">
+              <div className="title">
+                <h4>DEX's</h4>
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-md-4">
+                <Card style={{ width: '14em' }} header={header}>
+                  <div className="text-center">
+                    <Button
+                      onClick={() =>
+                        window.open(
+                          'https://testnet.ref.finance/#usdn.testnet|usdt.fakes.testnet',
+                          '_blank',
+                        )
+                      }
+                      label="Swap"
+                      icon="pi pi-arrows-h"
+                    />
+                  </div>
+                </Card>
+              </div>
             </div>
           </div>
-        </div>
-      </Section>
+        </Section>
+        <Section className="mt-4">
+          <div className="container">
+            <div className="title-container">
+              <div className="title">
+                <h4>CEX's</h4>
+              </div>
+            </div>
+          </div>
+        </Section>
+      </div>
     </>
   )
 }

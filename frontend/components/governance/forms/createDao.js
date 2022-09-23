@@ -24,13 +24,12 @@ const CreateDao = ({
     { label: 'DAO info' },
     { label: 'KYC' },
     { label: 'Social links' },
-    { label: 'Milestone4' },
     { label: 'Deadline' },
     { label: 'Summary' },
   ]
 
   return (
-    <Section>
+    <>
       <div className="title-container">
         <div className="title">
           <h4>Create a DAO</h4>
@@ -79,7 +78,7 @@ const CreateDao = ({
                         </label>
                       </span>
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-6 phone">
                       <span className="p-float-label grid-item">
                         <InputText
                           id="purpose"
@@ -200,7 +199,7 @@ const CreateDao = ({
           </div>
         </>
       )}
-    </Section>
+    </>
   )
 }
 
@@ -211,6 +210,9 @@ const Section = styled.section`
   height: 100%;
   width: 100%;
   color: white;
+  @media only screen and (max-width: 550px) {
+    width: 23rem;
+  }
   .title-container {
     display: flex;
     justify-content: space-between;
