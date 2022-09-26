@@ -119,7 +119,6 @@ const MyVestingList = ({ myVestList }) => {
           <Column field="period" header="Period" sortable></Column>
           <Column field="amount" header="Amount" sortable></Column>
           <Column field="payment_date" header="Pay date" sortable></Column>
-
           <Column
             field="isPaid"
             header="State"
@@ -144,7 +143,7 @@ const MyVestingList = ({ myVestList }) => {
   )
   return (
     <div className="datatable-rowexpansion-demo">
-      <div className="card">
+      <div>
         <DataTable
           value={myVestList}
           expandedRows={expandedRows}

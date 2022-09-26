@@ -12,14 +12,16 @@ import { Button } from 'primereact/button'
 import { Dialog } from 'primereact/dialog'
 import { DataScroller } from 'primereact/datascroller'
 import { Rating } from 'primereact/rating'
+import { TabView, TabPanel } from 'primereact/tabview'
+
 import { hashToKeccak256 } from '../utils/keccak256'
 import MyVestingList from '../components/vesting/tables/MyVestingList'
 
 // Time formatter
 import moment from 'moment'
+import VestingList from '../components/vesting/tables/vestingList'
 
 const VestingPage = () => {
-
   // Lists ( Array of objects)
   const [vestList, setVestList] = useState([])
   const [myVestList, setMyVestList] = useState([])
@@ -29,6 +31,9 @@ const VestingPage = () => {
   //Selected items
   const [selectedPack, setSelectedPack] = useState('')
   const [isSelectedPack, setIsSelectedPack] = useState(false)
+
+  // Loading
+  const [isLoading, setIsLoading] = useState(false)
 
   const [packs, setPacks] = useState(VestingPacks)
   const ds = useRef(null)
@@ -76,9 +81,16 @@ const VestingPage = () => {
 
   useEffect(() => {
     window.vesting.get_all_vestors().then((list) => {
-      setVestList(list)
+      let allList = []
       let myList = []
       list.forEach((item) => {
+        allList.push({
+          ...item,
+          account: {
+            owner_id: item.owner_id,
+            image: 'ionibowcher.png',
+          },
+        })
         if (item.owner_id === window.accountId.toString())
           myList.push({
             ...item,
@@ -116,8 +128,8 @@ const VestingPage = () => {
             ],
           })
       })
-      console.log(myList)
-
+      console.log(allList)
+      setVestList(allList)
       setMyVestList(myList)
     })
   }, [])
@@ -177,14 +189,34 @@ const VestingPage = () => {
         <div className="row">
           <div className="title-container">
             <div className="title">
-              <h4>My Vesting schedules</h4>
+              <h4>Vesting</h4>
             </div>
           </div>
           <div className="col-md-12 phone">
-            <Section>
-              <Toolbar className="mb-4" right={rightToolbarTemplate}></Toolbar>
-              <MyVestingList myVestList={myVestList} />
-            </Section>
+            <TabView>
+              <TabPanel header="All vesting schedules">
+                <>
+                  {' '}
+                  <Toolbar
+                    className="mb-4"
+                    right={rightToolbarTemplate}
+                  ></Toolbar>
+                  <VestingList vestList={vestList} />
+                </>
+              </TabPanel>
+              <TabPanel
+                header="My vesting schedules"
+                disabled={!window.walletConnection.isSignedIn()}
+              >
+                <>
+                  <Toolbar
+                    className="mb-4"
+                    right={rightToolbarTemplate}
+                  ></Toolbar>
+                  <MyVestingList myVestList={myVestList} />
+                </>
+              </TabPanel>
+            </TabView>
           </div>
         </div>
       </Section>
