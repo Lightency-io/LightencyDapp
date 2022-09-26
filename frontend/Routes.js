@@ -11,6 +11,7 @@ import VotingPage from './pages/VotingPage'
 import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import StakePage from './pages/StakePage'
 import StakingPoolPage from './pages/StakingPoolPage'
+import VestingPage from './pages/VestingPage'
 
 const Routes = () => {
   return (
@@ -20,6 +21,7 @@ const Routes = () => {
       <Route exact path="/governance" element={<GovernancePage />} />
       <Route exact path="/swap" element={<SwapPage />} />
       <Route exact path="/stake" element={<StakePage />} />
+      <Route exact path="/vesting" element={<VestingPage />} />
       <Route exact path="/stake/:pool_name" element={<StakingPoolPage />} />
       <Route exact path="/governance/:dao_name" element={<DaoPage />}>
         <Route exact path="landing" element={<Dashboards />} />

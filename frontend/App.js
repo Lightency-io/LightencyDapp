@@ -19,6 +19,7 @@ import Routes from './Routes'
 import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import { GiHamburgerMenu } from 'react-icons/gi'
 import Sidebar from './components/shared/Sidebar/sidebar'
+import Footer from './components/shared/Footer/footer'
 
 export const ThemeContext = React.createContext(null)
 
@@ -94,7 +95,9 @@ export default function App() {
                 login={login}
               />
             </SidebarContainer>
-            <FooterContainer>Footer</FooterContainer>
+            <FooterContainer className="mt-4">
+              <Footer />
+            </FooterContainer>
           </Wrapper>
         </ThemeProvider>
       </ThemeContext.Provider>
@@ -144,7 +147,6 @@ export const Wrapper = styled.div`
     'sidebar nav nav nav'
     'sidebar main main main'
     'sidebar footer footer footer';
-  grid-gap: 0.2rem;
 
   @media only screen and (max-width: 550px) {
     grid-template-columns: 1fr;
@@ -179,6 +181,6 @@ export const SidebarContainer = styled.div`
 `
 
 export const FooterContainer = styled.div`
-  background: #1de9b6;
+  background: black;
   grid-area: footer;
 `
