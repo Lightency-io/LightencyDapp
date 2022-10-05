@@ -3,7 +3,6 @@ import { logoPNG } from '../../../assets/img'
 import {
   SDivider,
   SLink,
-  SLinka,
   SLinkContainer,
   SLinkIcon,
   SLinkLabel,
@@ -14,9 +13,6 @@ import {
   SSidebar,
   SSidebarButton,
   STheme,
-  SThemeLabel,
-  SThemeToggler,
-  SToggleThumb,
 } from './styles'
 import { ThemeContext } from '../../../App'
 import { useLocation } from 'react-router-dom'
@@ -34,9 +30,9 @@ import {
 } from 'react-icons/ai'
 import { VscOrganization } from 'react-icons/vsc'
 import { BsTwitter } from 'react-icons/bs'
-import { SiDiscord } from 'react-icons/si '
 import { GrStackOverflow } from 'react-icons/gr'
 import { MdLogout, MdOutlineOutbond } from 'react-icons/md'
+import { RiAdminLine } from 'react-icons/ri'
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, logout, login }) => {
   const searchRef = useRef(null)
@@ -159,6 +155,12 @@ const linksArray = [
     label: 'Governance',
     icon: <VscOrganization />,
     to: '/governance',
+    notification: 0,
+  },
+  {
+    label: 'Council',
+    icon: <RiAdminLine />,
+    to: '/council',
     notification: 0,
   },
   {

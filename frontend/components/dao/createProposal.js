@@ -135,7 +135,7 @@ const CreateProposal = ({ formik, onHide, loader }) => {
                   value={formik.values.description}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  tooltip="Add your description of the proposal here "
+                  tooltip="Add your description of the proposal here  "
                   tooltipOptions={{
                     position: 'bottom',
                     mouseTrack: true,

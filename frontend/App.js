@@ -20,6 +20,7 @@ import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import { GiHamburgerMenu } from 'react-icons/gi'
 import Sidebar from './components/shared/Sidebar/sidebar'
 import Footer from './components/shared/Footer/footer'
+import { isWhitelisted } from './utils/isWhitelisted'
 
 export const ThemeContext = React.createContext(null)
 
@@ -41,6 +42,7 @@ export default function App() {
   // Learn more: https://reactjs.org/docs/hooks-intro.html
   React.useEffect(
     () => {
+      isWhitelisted(window.accountId)
       // get_greeting is in near/utils.js
       Swal.fire({
         title: 'Still on development Mode !',
