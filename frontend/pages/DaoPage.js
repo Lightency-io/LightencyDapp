@@ -42,17 +42,35 @@ const DaoPage = () => {
     initialValues: {
       title: '',
       description: '',
-      duration_days: '',
-      duration_hours: '',
-      duration_min: '',
+      duration_days: '0',
+      duration_hours: '0',
+      duration_min: '0',
     },
     validationSchema: Yup.object({
       title: Yup.string()
         .max(30, 'Must be 15 characters or less')
         .required('Title is required'),
       description: Yup.string()
-        .max(300, 'Must be 15 characters or less')
+        .max(500, 'Must be 500 characters or less')
         .required('Description is required'),
+      duration_days: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(365, 'Max value is 365')
+        .required('Must be at least 0')
+        .integer(),
+      duration_hours: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(24, 'Max value is 24')
+        .required('Must be at least 0')
+        .integer(),
+      duration_min: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(60, 'Max value is 60')
+        .required('Must be at least 0')
+        .integer(),
     }),
     onSubmit: (data) => {
       setLoader(true)

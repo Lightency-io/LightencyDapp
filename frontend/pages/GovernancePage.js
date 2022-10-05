@@ -34,9 +34,9 @@ const GovernancePage = () => {
     initialValues: {
       name: '',
       purpose: '',
-      daysDuration: '',
-      hoursDuration: '',
-      minuteDuration: '',
+      daysDuration: '0',
+      hoursDuration: '0',
+      minuteDuration: '0',
     },
     validationSchema: Yup.object({
       name: Yup.string()
@@ -45,6 +45,24 @@ const GovernancePage = () => {
       purpose: Yup.string()
         .max(250, 'Must be 15 characters or less')
         .required('Purpose is required'),
+      daysDuration: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(365, 'Max value is 365')
+        .required('Must be at least 0')
+        .integer(),
+      hoursDuration: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(24, 'Max value is 24')
+        .required('Must be at least 0')
+        .integer(),
+      minuteDuration: Yup.number()
+        .typeError('Must be a number')
+        .min(0, 'Min value is 0')
+        .max(60, 'Max value is 60')
+        .required('Must be at least 0')
+        .integer(),
     }),
     onSubmit: (data) => {
       if (window.walletConnection.isSignedIn()) {

@@ -7,8 +7,7 @@ import Loader2 from '../shared/Loading/loader2'
 import { classNames } from 'primereact/utils'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
-import { Dialog } from 'primereact/dialog';
-
+import { InputTextarea } from 'primereact/inputtextarea'
 
 const CreateProposal = ({ formik, onHide, loader }) => {
   return (
@@ -46,32 +45,8 @@ const CreateProposal = ({ formik, onHide, loader }) => {
                 </label>
               </span>
             </div>
-            <div className="col-md-6">
-              <span className="p-float-label grid-item">
-                <InputText
-                  id="description"
-                  value={formik.values.description}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  className={classNames({
-                    'p-invalid':
-                      formik.touched.description && formik.errors.description,
-                  })}
-                />
-                <label
-                  htmlFor="description"
-                  className={classNames({
-                    'p-error':
-                      formik.touched.description && formik.errors.description,
-                  })}
-                >
-                  {formik.touched.description && formik.errors.description
-                    ? formik.errors.description
-                    : 'Description'}
-                </label>
-              </span>
-            </div>
-            <div className="col-md-6 mt-4" style={{ paddingTop: '10px' }}>
+
+            <div className="col-md-6 ">
               <span className="p-float-label grid-item">
                 <InputText
                   id="duration_days"
@@ -153,6 +128,40 @@ const CreateProposal = ({ formik, onHide, loader }) => {
                 </label>
               </span>
             </div>
+            <div className="col-md-6 mt-4" style={{ paddingTop: '10px' }}>
+              <span className="p-float-label grid-item">
+                <InputTextarea
+                  id="description"
+                  value={formik.values.description}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  tooltip="Add your description of the proposal here "
+                  tooltipOptions={{
+                    position: 'bottom',
+                    mouseTrack: true,
+                    mouseTrackTop: 15,
+                  }}
+                  rows={4}
+                  cols={22}
+                  autoResize
+                  className={classNames({
+                    'p-invalid':
+                      formik.touched.description && formik.errors.description,
+                  })}
+                />
+                <label
+                  htmlFor="description"
+                  className={classNames({
+                    'p-error':
+                      formik.touched.description && formik.errors.description,
+                  })}
+                >
+                  {formik.touched.description && formik.errors.description
+                    ? formik.errors.description
+                    : 'Description'}
+                </label>
+              </span>
+            </div>
           </div>
           <div
             className="mt-4"
@@ -164,7 +173,13 @@ const CreateProposal = ({ formik, onHide, loader }) => {
               onClick={() => onHide('displayBasic2')}
               className="p-button-text"
             />
-            <Button label="Yes" icon="pi pi-check" type="submit" autoFocus />
+            <Button
+              label="Yes"
+              icon="pi pi-check"
+              type="submit"
+              disabled={!formik.isValid || !formik.dirty}
+              autoFocus
+            />
           </div>
         </form>
       ) : (
