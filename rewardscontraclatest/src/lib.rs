@@ -137,11 +137,23 @@ impl Rewardercontract {
 
     }
 
-    pub fn calculaterewards(&self,amount:u128,time:u64)-> f64{
+    pub fn get_total_amount_per_wallet(&self, account:String) -> u128{
+        let mut sum = 0;
+        let a= self.staker_data.get(&account).unwrap();
+        for i in a {
+            sum += i.amount;
+        }
+        sum
+    }
+
+    pub fn calculaterewards(&self,account:String)-> f64{
         //Reward to stakers= Total staked (t) X APY(t) 
         //APY(t)=Staking pool supply/total staked(t) X Yield parameter.
-        let apy=0.1;
-        let reward = amount as f64 * apy;
-        return reward * 1000000000000000000000000.0;
+        let staked_per_wallet = self.get_total_amount_per_wallet(account);
+        let reward_pool = 100 as f64;
+        let total_reward = (reward_pool / 1095 as f64) as f64;
+        let apy=(total_reward / self.get_totalstaked() as f64) as f64;
+        let reward = (apy * staked_per_wallet as f64) as f64;
+        return reward;
     } 
 }
