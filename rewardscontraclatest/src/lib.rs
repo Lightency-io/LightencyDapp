@@ -9,8 +9,10 @@ use near_sdk::collections::{Vector, UnorderedMap};
 pub struct Data {
     amount:u128,
     time:u64,
+    reward:u128,
+    unstaked_amount:u128,
+    unstake_timestamp:u64
 }
-
 #[ext_contract(ext_ft)]
 pub trait Rewardpool {
     #[payable]
@@ -22,7 +24,7 @@ pub trait Rewardpool {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Rewardercontract {
     redeemers:Vector<String>,
-    staker_data:UnorderedMap<String,Vec<Data>>,
+    staker_data:UnorderedMap<String,Data>,
 }
 
 impl Default for Rewardercontract {
@@ -64,22 +66,19 @@ impl Rewardercontract {
 
     pub fn add_staker(&mut self, account:String, amount:u128) {
         if self.staker_data.get(&account).is_none() {
-            let mut v = Vec::new();
             let data = Data {
                 amount : amount,
                 time: env::block_timestamp(),
+                reward:0,
+                unstaked_amount:0,
+                unstake_timestamp:0
             };
-            v.push(data);
-            self.staker_data.insert(&account, &v);
+            self.staker_data.insert(&account, &data);
         }else {
-            let mut v = self.staker_data.get(&account).unwrap(); 
-            let data = Data {
-                amount : amount,
-                time: env::block_timestamp(),
-            };
-            v.push(data);
-            //self.staker_data.remove(&account);
-            self.staker_data.insert(&account, &v);
+            let mut data = self.staker_data.get(&account).unwrap(); 
+            data.amount+=amount;
+            data.time = env::block_timestamp(); 
+            self.staker_data.insert(&account, &data);
         }
     }
 
@@ -98,16 +97,36 @@ impl Rewardercontract {
     pub fn get_totalstaked(&self) -> u128 {
         let mut sum:u128= 0;
         for i in self.staker_data.values_as_vector().to_vec() {
-            for j in i {
-                sum = sum + j.amount;
-            }
+                sum = sum + i.amount;
         }
         sum
     }
 
-    pub fn get_data(&self, account:String) -> Vec<Data> {
+    pub fn get_data(&self, account:String) -> Data {
         self.staker_data.get(&account).unwrap()
     } 
+
+    pub fn unstake(&mut self, account:String, amount:u128){
+        if self.check_staker(account.clone()){
+            if amount < self.get_data(account.clone()).amount {
+                let mut data=self.get_data(account.clone());
+                data.amount-=amount;
+                data.unstaked_amount+=amount;
+                data.unstake_timestamp=env::block_timestamp();
+                self.staker_data.insert(&account.clone(), &data);
+            }else if amount == self.get_data(account.clone()).amount {
+                let mut data=self.get_data(account.clone());
+                data.amount-=amount;
+                data.unstaked_amount+=amount;
+                data.unstake_timestamp=env::block_timestamp();
+                self.staker_data.insert(&account.clone(), &data);
+            }else{
+                panic!("You don't have enough staked amount !!!");
+            }
+        }else {
+            panic!("You are not one of the stakers");
+        }
+    }
 
     pub fn pay(&self ,amount:u128 , to:String){
         let account = "lightencyrewardpool.testnet".to_string().try_into().unwrap();
@@ -138,12 +157,7 @@ impl Rewardercontract {
     }
 
     pub fn get_total_amount_per_wallet(&self, account:String) -> u128{
-        let mut sum = 0;
-        let a= self.staker_data.get(&account).unwrap();
-        for i in a {
-            sum += i.amount;
-        }
-        sum
+        self.get_data(account).amount
     }
 
     pub fn calculaterewards(&self,account:String)-> f64{
