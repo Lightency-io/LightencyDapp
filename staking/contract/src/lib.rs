@@ -1,7 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::Vector;
 use near_sdk::ext_contract;
-use near_sdk::{env, near_bindgen, AccountId, Gas, PanicOnDefault, Promise, PromiseError};
+use near_sdk::{env, near_bindgen, AccountId, Gas, Promise};
 use serde::Serialize;
 
 pub const TGAS: u64 = 1_000_000_000_000;
@@ -21,6 +21,11 @@ pub trait StakingPool {
     #[payable]
     fn add_staker(&mut self, account: String, amount: u128);
     fn unstake (&mut self, account:String);
+}
+
+#[ext_contract(ext_lts)]
+pub trait Lts {
+    fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
 }
 
 // Unstakers implementation
@@ -58,7 +63,6 @@ impl Stakers {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct StakingContract {
-    stakers: Vector<Stakers>,
     unstakers: Vector<Unstakers>,
 }
 
@@ -86,16 +90,7 @@ impl StakingContract {
     pub fn new() -> Self {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         Self {
-            stakers: Vector::new(b"a"),
             unstakers: Vector::new(b"a"),
-        }
-    }
-
-    // delete all stakers
-    pub fn delete_all_stakers(&mut self) {
-        assert_self();
-        for _i in 0..self.stakers.len() {
-            self.stakers.pop();
         }
     }
 
@@ -111,11 +106,6 @@ impl StakingContract {
 
     // stake function
     pub fn stake(&mut self, amount: u128) {
-        let mut staker = Stakers::new();
-        staker.account_id = env::signer_account_id().to_string();
-        staker.staking_amount = amount;
-        staker.staking_time = env::block_timestamp();
-        self.stakers.push(&staker);
         // deposit stake (..., accountid:user)
         self.deposit_stake(amount);
     }
@@ -129,16 +119,23 @@ impl StakingContract {
     #[payable]
     pub fn deposit_stake(&mut self, amount: u128) {
         let signer_account = env::signer_account_id().to_string();
-        // let account = "lightencypool.testnet".to_string().try_into().unwrap();
 
         // account as account id
         let account = "lightencypool.testnet".to_string().try_into().unwrap();
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
 
-        //let _payment = self.pay(amount, benificiary);
         // cross call function to change data in the staking pool
         ext_ft::ext(account)
-            .with_static_gas(Gas(5 * TGAS))
-            .add_staker(signer_account, amount);
+            .with_static_gas(Gas(3 * TGAS))
+            .add_staker(signer_account, amount)
+            .then(
+                // transfer lts to the staking pool 
+                ext_lts::ext(account_lts)
+                .with_static_gas(Gas(2 * TGAS))
+                .with_attached_deposit(1)
+                .ft_transfer("lightencypool.testnet".to_string(),(amount*100000000).to_string(),"".to_string())
+            );
+
     }
 
     // unstake function

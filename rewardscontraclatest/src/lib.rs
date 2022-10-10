@@ -1,48 +1,44 @@
 use near_sdk::{ext_contract};
 use serde::{Serialize, Deserialize};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{log, env, near_bindgen, AccountId, Gas, Promise, PromiseError, PanicOnDefault};
-use near_sdk::collections::Vector;
-
-
-
+use near_sdk::{env, near_bindgen, Gas};
+use near_sdk::collections::{Vector, UnorderedMap};
 
 #[derive(BorshDeserialize, BorshSerialize)]
 #[derive(Serialize,Deserialize)]
 pub struct Data {
     amount:u128,
     time:u64,
+    reward:u128,
+    unstaked_amount:u128,
+    unstake_timestamp:u64
 }
-
 #[ext_contract(ext_ft)]
 pub trait Rewardpool {
     #[payable]
     fn pay(&mut self, amount: u128, to: String);
 }
 
-#[ext_contract(this_contract)]
-trait Callbacks {
-    fn get_data_callback(&self) -> Data;
-}
-
-#[ext_contract(ext_lightencypool)]
-pub trait Lightencypool {
-    fn get_data(&self, account:String) -> Vec<Data>;
-    fn get_totalstaked(&self) -> u128;
-}
-
-
 // Define the contract structure
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Rewardercontract {
     redeemers:Vector<String>,
+    staker_data:UnorderedMap<String,Data>,
 }
 
 impl Default for Rewardercontract {
     fn default() -> Self {
         panic!("Contract is not initialized yet")
     }
+}
+
+fn assert_self() {
+    assert_eq!(
+        env::current_account_id(),
+        env::predecessor_account_id(),
+        "Can only be called by owner"
+    );
 }
 
 // Implement the Rewardercontract structure
@@ -54,87 +50,83 @@ impl Rewardercontract {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         Self {
             redeemers: Vector::new(b"a"),
+            staker_data: UnorderedMap::new(b"m"),
         }
+    }
+
+    // delete all stakers
+    pub fn delete_all_stakers(&mut self) {
+        assert_self();
+        self.staker_data.clear();
     }
 
     pub fn redeem(&mut self,account:String){
         self.redeemers.push(&account);
     }
 
-    pub fn get_data_staker(&self, account:String) -> Promise{
-        let contract = "lightencyrewardpool.testnet".to_string().try_into().unwrap();
-        // Create a promise to call HelloNEAR.get_greeting()
-        let promise = ext_lightencypool::ext(contract)
-          .with_static_gas(Gas(5*1000000000000))
-          .get_data(account);
-        
-        return promise.then( // Create a promise to callback query_greeting_callback
-          Self::ext(env::current_account_id())
-          .with_static_gas(Gas(5*1000000000000))
-          .query_data_staker_callback()
-        )
-      }
-    
-        
-      // Public - but only callable by env::current_account_id()
-        pub fn query_data_staker_callback(&self, #[callback_result] call_result: Result<Vec<Data>, PromiseError>) -> Vec<Data> {
-        // Check if the promise succeeded by calling the method outlined in external.rs
-        if call_result.is_err() {
-            panic!("There was an error contacting stakingpool contract");
+    pub fn add_staker(&mut self, account:String, amount:u128) {
+        if self.staker_data.get(&account).is_none() {
+            let data = Data {
+                amount : amount,
+                time: env::block_timestamp(),
+                reward:0,
+                unstaked_amount:0,
+                unstake_timestamp:0
+            };
+            self.staker_data.insert(&account, &data);
+        }else {
+            let mut data = self.staker_data.get(&account).unwrap(); 
+            data.amount+=amount;
+            data.time = env::block_timestamp(); 
+            self.staker_data.insert(&account, &data);
         }
-    
-        // Return the greeting
-        let data: Vec<Data> = call_result.unwrap();
-        data
+    }
+
+    pub fn check_staker(&self, account:String) -> bool {
+        let mut existance = false;
+        let stakers = self.staker_data.keys_as_vector();
+        for i in stakers.to_vec() {
+            if account == i {
+                existance = true;
+                break;
+            }
         }
- // ****** GETTER TOTAL STAKED*****//
-  pub fn get_totalstaked(&self) -> Promise {
-    let account = "lightencyrewardpool.testnet".to_string().try_into().unwrap();
-    // Create a promise to call HelloNEAR.get_greeting()
-    let promise = ext_lightencypool::ext(account)
-      .with_static_gas(Gas(5*1000000000000))
-      .get_totalstaked();
-    
-    return promise.then( // Create a promise to callback query_greeting_callback
-      Self::ext(env::current_account_id())
-      .with_static_gas(Gas(5*1000000000000))
-      .query_totalstaked_callback()
-    )
-  }
-
-    #[private] // Public - but only callable by env::current_account_id()
-    pub fn query_totalstaked_callback(&self, #[callback_result] call_result: Result<u128, PromiseError>) -> u128 {
-    // Check if the promise succeeded by calling the method outlined in external.rs
-    if call_result.is_err() {
-        log!("There was an error contacting Hello NEAR");
-        return 0;
+        existance
     }
 
-    // Return the greeting
-    let totalstaked: u128 = call_result.unwrap();
-    totalstaked
+    pub fn get_totalstaked(&self) -> u128 {
+        let mut sum:u128= 0;
+        for i in self.staker_data.values_as_vector().to_vec() {
+                sum = sum + i.amount;
+        }
+        sum
     }
 
-    // pub fn get_totalstaked(&self){
-    //     let promise = Lightencypool::get_totalstaked();
-    //     return promise.then(
-    //         Self::ext(env::current_account_id())
-    //         .with_static_gas(Gas(5*1000000000000))
-    //         .get_totalstaked_callback()
-    //     )
-    // }
+    pub fn get_data(&self, account:String) -> Data {
+        self.staker_data.get(&account).unwrap()
+    } 
 
-    #[private] // Public - but only callable by env::current_account_id()
-    pub fn get_totalstaked_callback(&self, #[callback_result] call_result: Result<u128, PromiseError>) -> u128 {
-    // Check if the promise succeeded by calling the method outlined in external.rs
-    if call_result.is_err() {
-        panic!("There was an error contacting staking Contract");
+    pub fn unstake(&mut self, account:String, amount:u128){
+        if self.check_staker(account.clone()){
+            if amount < self.get_data(account.clone()).amount {
+                let mut data=self.get_data(account.clone());
+                data.amount-=amount;
+                data.unstaked_amount+=amount;
+                data.unstake_timestamp=env::block_timestamp();
+                self.staker_data.insert(&account.clone(), &data);
+            }else if amount == self.get_data(account.clone()).amount {
+                let mut data=self.get_data(account.clone());
+                data.amount-=amount;
+                data.unstaked_amount+=amount;
+                data.unstake_timestamp=env::block_timestamp();
+                self.staker_data.insert(&account.clone(), &data);
+            }else{
+                panic!("You don't have enough staked amount !!!");
+            }
+        }else {
+            panic!("You are not one of the stakers");
+        }
     }
-
-    // Return the data
-    let totalstaked: u128 = call_result.unwrap();
-    totalstaked
-  }
 
     pub fn pay(&self ,amount:u128 , to:String){
         let account = "lightencyrewardpool.testnet".to_string().try_into().unwrap();
@@ -164,13 +156,18 @@ impl Rewardercontract {
 
     }
 
-    pub fn calculaterewards(&self,amount:u128,time:u64)-> f64{
+    pub fn get_total_amount_per_wallet(&self, account:String) -> u128{
+        self.get_data(account).amount
+    }
+
+    pub fn calculaterewards(&self,account:String)-> f64{
         //Reward to stakers= Total staked (t) X APY(t) 
         //APY(t)=Staking pool supply/total staked(t) X Yield parameter.
-        let apy=0.1;
-        let reward = amount as f64 * apy;
-        return reward * 1000000000000000000000000.0;
-    }
+        let staked_per_wallet = self.get_total_amount_per_wallet(account);
+        let reward_pool = 100 as f64;
+        let total_reward = (reward_pool / 1095 as f64) as f64;
+        let apy=(total_reward / self.get_totalstaked() as f64) as f64;
+        let reward = (apy * staked_per_wallet as f64) as f64;
+        return reward;
+    } 
 }
-
-
