@@ -1,5 +1,6 @@
 import React from 'react'
 import { Route, Routes as R } from 'react-router-dom'
+
 import HomePage from './pages/HomePage'
 import GovernancePage from './pages/GovernancePage'
 import DaoPage from './pages/DaoPage'
@@ -12,6 +13,7 @@ import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import StakePage from './pages/StakePage'
 import StakingPoolPage from './pages/StakingPoolPage'
 import VestingPage from './pages/VestingPage'
+import CouncilPage from './pages/CouncilPage'
 
 const Routes = () => {
   return (
@@ -20,8 +22,9 @@ const Routes = () => {
       <Route exact path="/home" element={<HomePage />} />
       <Route exact path="/governance" element={<GovernancePage />} />
       <Route exact path="/swap" element={<SwapPage />} />
-      <Route exact path="/stake" element={<StakePage />} />
       <Route exact path="/vesting" element={<VestingPage />} />
+      <Route exact path="/council" element={<CouncilPage />} />
+      <Route exact path="/stake" element={<StakePage />} />
       <Route exact path="/stake/:pool_name" element={<StakingPoolPage />} />
       <Route exact path="/governance/:dao_name" element={<DaoPage />}>
         <Route exact path="landing" element={<Dashboards />} />

@@ -17,7 +17,6 @@ import Swal from 'sweetalert2'
 import Routes from './Routes'
 
 import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
-import { GiHamburgerMenu } from 'react-icons/gi'
 import Sidebar from './components/shared/Sidebar/sidebar'
 import Footer from './components/shared/Footer/footer'
 import { isWhitelisted } from './utils/isWhitelisted'
@@ -27,6 +26,7 @@ export const ThemeContext = React.createContext(null)
 export default function App() {
   // use React Hooks to store greeting in component state
   const [greeting, setGreeting] = React.useState()
+  const [isCouncil, setIsCouncil] = useState(false)
   const [theme, setTheme] = useState('light')
   const themeStyle = theme === 'light' ? lightTheme : darkTheme
 
@@ -42,7 +42,7 @@ export default function App() {
   // Learn more: https://reactjs.org/docs/hooks-intro.html
   React.useEffect(
     () => {
-      isWhitelisted(window.accountId)
+      setIsCouncil(isWhitelisted(window.accountId))
       // get_greeting is in near/utils.js
       Swal.fire({
         title: 'Still on development Mode !',
@@ -84,13 +84,19 @@ export default function App() {
           </Helmet>
           <Wrapper>
             <NavbarContainer>
-              <Navbar logout={logout} login={login} />
+              <Navbar
+                isCouncil={isCouncil}
+                setIsCouncil={setIsCouncil}
+                logout={logout}
+                login={login}
+              />
             </NavbarContainer>
             <MainContainer>
               <Routes />
             </MainContainer>
             <SidebarContainer>
               <Sidebar
+                isCouncil={isCouncil}
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
                 logout={logout}
@@ -172,10 +178,11 @@ export const NavbarContainer = styled.nav`
 
 export const MainContainer = styled.main`
   grid-area: main;
+  height: 100%;
+  overflow-y: scroll;
 `
 
 export const SidebarContainer = styled.div`
-  background: black;
   grid-area: sidebar;
   @media only screen and (max-width: 550px) {
     display: none;

@@ -16,6 +16,7 @@ const MyVestingList = ({ myVestList }) => {
   const [selectedVestId, setSelectedVestId] = useState('')
 
   const accept = () => {
+    console.log('alolao', selectedVestId)
     window.vesting
       .refresh({ v_id: selectedVestId })
       .then((res) => {
@@ -99,9 +100,10 @@ const MyVestingList = ({ myVestList }) => {
       <>
         <ConfirmPopup />
         <Button
-          onClick={(e) => {
+          onClick={async (e) => {
             confirm1(e)
-            setSelectedVestId(rowData.id)
+            await setSelectedVestId(rowData.id)
+            console.log(selectedVestId)
           }}
           label="Claim"
           className="btn p-button-success mr-2"

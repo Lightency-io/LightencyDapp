@@ -43,7 +43,7 @@ import {
 } from '../Sidebar/styles'
 import { logoPNG } from '../../../assets/img'
 
-const Navbar = ({ logout, login }) => {
+const Navbar = ({ isCouncil, setIsCouncil, logout, login }) => {
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 1224px)' })
   const [visibleTop, setVisibleTop] = useState(false)
   const { pathname } = useLocation()

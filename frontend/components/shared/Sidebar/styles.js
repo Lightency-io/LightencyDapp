@@ -10,11 +10,23 @@ export const SSidebar = styled.div`
   position: -webkit-sticky;
   position: sticky;
   top: 1px; /* or whatever top you need */
-  display: block;
-
+  //display: inline;
   @media only screen and (max-width: 550px) {
     width: 4rem;
   }
+`
+
+export const SSidebarContainer = styled.div`
+  overflow: hidden;
+  position: fixed;
+`
+
+export const SScrollable = styled.div`
+  width: 100%;
+  height: 30rem;
+  overflow-y: scroll;
+  padding-right: 17px; /* Increase/decrease this value for cross-browser compatibility */
+  box-sizing: content-box; /* So the width will be 100% + 17px */
 `
 
 export const SSidebarButton = styled.button`

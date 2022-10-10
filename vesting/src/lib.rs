@@ -219,7 +219,7 @@ impl VestingContract {
     // Function to replace a vestor by the new one
     pub fn replace_vestor (&mut self, vestor:Vestors) {
         for i in 0..self.records.len() {
-            if self.records.get(i).unwrap().owner_id == vestor.owner_id {
+            if self.records.get(i).unwrap().id == vestor.id {
                 self.records.replace(i, &vestor);
             }
         }

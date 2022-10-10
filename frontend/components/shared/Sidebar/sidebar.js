@@ -8,10 +8,12 @@ import {
   SLinkLabel,
   SLinkNotification,
   SLogo,
+  SScrollable,
   SSearch,
   SSearchIcon,
   SSidebar,
   SSidebarButton,
+  SSidebarContainer,
   STheme,
 } from './styles'
 import { ThemeContext } from '../../../App'
@@ -34,7 +36,7 @@ import { GrStackOverflow } from 'react-icons/gr'
 import { MdLogout, MdOutlineOutbond } from 'react-icons/md'
 import { RiAdminLine } from 'react-icons/ri'
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, logout, login }) => {
+const Sidebar = ({ isCouncil, sidebarOpen, setSidebarOpen, logout, login }) => {
   const searchRef = useRef(null)
   const { setTheme, theme } = useContext(ThemeContext)
   const { pathname } = useLocation()
@@ -75,44 +77,76 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, logout, login }) => {
           />
         </SSearch>
         <SDivider />
-        {linksArray.map(({ icon, label, notification, to }) => (
-          <SLinkContainer
-            key={label}
-            className="selected"
-            isActive={pathname === to}
-          >
-            <SLink to={to} style={!sidebarOpen ? { width: `fit-content` } : {}}>
-              <SLinkIcon>{icon}</SLinkIcon>
-              {sidebarOpen && (
-                <>
-                  <SLinkLabel>
-                    <p style={{ marginBottom: 0 }}>{label}</p>
-                  </SLinkLabel>
-                  {/* if notifications are at 0 or null, do not display */}
-                  {!!notification && (
-                    <SLinkNotification>{notification}</SLinkNotification>
+        <SSidebarContainer>
+          <SScrollable>
+            {' '}
+            {linksArray.map(({ icon, label, notification, to }) => (
+              <SLinkContainer
+                key={label}
+                className="selected"
+                isActive={pathname === to}
+              >
+                <SLink
+                  to={to}
+                  style={!sidebarOpen ? { width: `fit-content` } : {}}
+                >
+                  <SLinkIcon>{icon}</SLinkIcon>
+                  {sidebarOpen && (
+                    <>
+                      <SLinkLabel>
+                        <p style={{ marginBottom: 0 }}>{label}</p>
+                      </SLinkLabel>
+                      {/* if notifications are at 0 or null, do not display */}
+                      {!!notification && (
+                        <SLinkNotification>{notification}</SLinkNotification>
+                      )}
+                    </>
                   )}
+                </SLink>
+              </SLinkContainer>
+            ))}
+            <SDivider />
+            {isCouncil ? (
+              councilLinksArray.map(({ icon, label, to }) => (
+                <>
+                  <SLinkContainer key={label}>
+                    <SLink
+                      to={to}
+                      style={!sidebarOpen ? { width: `fit-content` } : {}}
+                    >
+                      <SLinkIcon>{icon}</SLinkIcon>
+                      {sidebarOpen && (
+                        <SLinkLabel>
+                          {' '}
+                          <p style={{ marginBottom: 0 }}>{label}</p>
+                        </SLinkLabel>
+                      )}
+                    </SLink>
+                  </SLinkContainer>
+                  <SDivider />
                 </>
-              )}
-            </SLink>
-          </SLinkContainer>
-        ))}
-        <SDivider />
-        {secondaryLinkArray.map(({ icon, label }) => (
-          <SLinkContainer key={label}>
-            <SLink to="/" style={!sidebarOpen ? { width: `fit-content` } : {}}>
-              <SLinkIcon>{icon}</SLinkIcon>
-              {sidebarOpen && (
-                <SLinkLabel>
-                  {' '}
-                  <p style={{ marginBottom: 0 }}>{label}</p>
-                </SLinkLabel>
-              )}
-            </SLink>
-          </SLinkContainer>
-        ))}
-        <SDivider />{' '}
-        {/* {thirdLinkArray.map(({ icon, label, to }) => (
+              ))
+            ) : (
+              <></>
+            )}
+            {secondaryLinkArray.map(({ icon, label }) => (
+              <SLinkContainer key={label}>
+                <SLink
+                  to="/"
+                  style={!sidebarOpen ? { width: `fit-content` } : {}}
+                >
+                  <SLinkIcon>{icon}</SLinkIcon>
+                  {sidebarOpen && (
+                    <SLinkLabel>
+                      {' '}
+                      <p style={{ marginBottom: 0 }}>{label}</p>
+                    </SLinkLabel>
+                  )}
+                </SLink>
+              </SLinkContainer>
+            ))}
+            <SDivider />{' '}
+            {/* {thirdLinkArray.map(({ icon, label, to }) => (
           <SLinkContainer key={label}>
             <SLinka
               href={to}
@@ -129,7 +163,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, logout, login }) => {
             </SLinka>
           </SLinkContainer>
         ))} */}
-        <SDivider />
+            <SDivider />
+          </SScrollable>
+        </SSidebarContainer>
         <STheme>
           {/* {sidebarOpen && <SThemeLabel>Dark Mode</SThemeLabel>}
           <SThemeToggler
@@ -144,23 +180,26 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, logout, login }) => {
   )
 }
 
+const councilLinksArray = [
+  {
+    label: 'Council',
+    icon: <RiAdminLine />,
+    to: '/council',
+    notification: 0,
+  },
+]
 const linksArray = [
   {
     label: 'Home',
     icon: <AiOutlineHome />,
     to: '/home',
     notification: 0,
+    forCouncil: true,
   },
   {
     label: 'Governance',
     icon: <VscOrganization />,
     to: '/governance',
-    notification: 0,
-  },
-  {
-    label: 'Council',
-    icon: <RiAdminLine />,
-    to: '/council',
     notification: 0,
   },
   {
