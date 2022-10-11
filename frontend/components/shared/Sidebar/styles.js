@@ -3,7 +3,8 @@ import styled from 'styled-components'
 import { btnReset, v } from '../../../styles/variables'
 
 export const SSidebar = styled.div`
-  width: ${({ isOpen }) => (!isOpen ? `auto` : v.sidebarWidth)};
+  // width: ${({ isOpen }) => (!isOpen ? `auto` : `110rem`)};
+  width: auto;
   background: ${({ theme }) => theme.bg};
   height: 100vh;
   padding: ${({ isOpen }) => (!isOpen ? `` : v.lgSpacing)};

@@ -1,16 +1,15 @@
 import 'regenerator-runtime/runtime'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 import './assets/css/global.css'
 
-import { login, logout, get_greeting, set_greeting } from './utils'
+import { login, logout } from './utils'
 import getConfig from './config'
 import { darkTheme, lightTheme } from './styles/theme'
 import { GlobalStyle } from './styles/globalStyles'
 import { Helmet } from 'react-helmet'
 import styled, { ThemeProvider } from 'styled-components'
 import Navbar from './components/shared/Navbar/navbar'
-import Layout from './components/layouts/layout'
 import Swal from 'sweetalert2'
 
 //Routing
@@ -20,12 +19,11 @@ import OnDevelopmentModPage from './pages/OnDevelopmentModPage'
 import Sidebar from './components/shared/Sidebar/sidebar'
 import Footer from './components/shared/Footer/footer'
 import { isWhitelisted } from './utils/isWhitelisted'
+import scrollreveal from 'scrollreveal'
 
 export const ThemeContext = React.createContext(null)
 
 export default function App() {
-  // use React Hooks to store greeting in component state
-  const [greeting, setGreeting] = React.useState()
   const [isCouncil, setIsCouncil] = useState(false)
   const [theme, setTheme] = useState('light')
   const themeStyle = theme === 'light' ? lightTheme : darkTheme
@@ -40,27 +38,48 @@ export default function App() {
 
   // The useEffect hook can be used to fire side-effects during render
   // Learn more: https://reactjs.org/docs/hooks-intro.html
-  React.useEffect(
-    () => {
-      setIsCouncil(isWhitelisted(window.accountId))
-      // get_greeting is in near/utils.js
-      Swal.fire({
-        title: 'Still on development Mode !',
-        text:
-          'Our platform is still under construction, however we left access to the potential users to check it. Please keep in mind when you see the logo of Lightency refilling , that means it is under development',
-        icon: 'warning',
-        confirmButtonText: 'Cool',
-        background: 'black',
-        iconColor: '#ffde00',
-        confirmButtonColor: 'grey',
-      })
-    },
+  React.useEffect(() => {
+    setIsCouncil(isWhitelisted(window.accountId))
+    Swal.fire({
+      title: 'Still on development Mode !',
+      text:
+        'Our platform is still under construction, however we left access to the potential users to check it. Please keep in mind when you see the logo of Lightency refilling , that means it is under development',
+      icon: 'warning',
+      confirmButtonText: 'Cool',
+      background: 'black',
+      iconColor: '#ffde00',
+      confirmButtonColor: 'grey',
+    })
+  }, [])
 
-    // The second argument to useEffect tells React when to re-run the effect
-    // Use an empty array to specify "only run on first render"
-    // This works because signing into NEAR Wallet reloads the page
-    [],
-  )
+  useEffect(() => {
+    const sr = scrollreveal({
+      origin: 'left',
+      distance: '80px',
+      duration: 1000,
+      reset: false,
+    })
+    sr.reveal(
+      `
+       #sidebar
+    `,
+      {
+        opacity: 0,
+      },
+    )
+    sr.reveal(
+      `
+       #navbar
+    `,
+      { easing: 'ease-in' },
+    )
+    sr.reveal(
+      `
+       #footer
+    `,
+      { easing: 'ease-in' },
+    )
+  }, [])
 
   // if not signed in, return early with sign-in prompt
   // if (!window.walletConnection.isSignedIn()) {
@@ -83,7 +102,7 @@ export default function App() {
             <title>Lightency platform - DAO protocol</title>
           </Helmet>
           <Wrapper>
-            <NavbarContainer>
+            <NavbarContainer id="navbar">
               <Navbar
                 isCouncil={isCouncil}
                 setIsCouncil={setIsCouncil}
@@ -94,7 +113,7 @@ export default function App() {
             <MainContainer>
               <Routes />
             </MainContainer>
-            <SidebarContainer>
+            <SidebarContainer id="sidebar">
               <Sidebar
                 isCouncil={isCouncil}
                 sidebarOpen={sidebarOpen}
@@ -103,7 +122,7 @@ export default function App() {
                 login={login}
               />
             </SidebarContainer>
-            <FooterContainer className="mt-4">
+            <FooterContainer className="mt-4" id="footer">
               <Footer />
             </FooterContainer>
           </Wrapper>

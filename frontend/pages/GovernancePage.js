@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import styled from 'styled-components'
 import Chart1 from '../components/governance/charts/chart1'
 import CreateDao from '../components/governance/forms/createDao'
@@ -13,6 +13,8 @@ import { BreadCrumb } from 'primereact/breadcrumb'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import Swal from 'sweetalert2'
+
+import scrollreveal from 'scrollreveal'
 
 const GovernancePage = () => {
   const [reload, setReload] = useState('no load')
@@ -102,6 +104,21 @@ const GovernancePage = () => {
     },
   })
 
+  useEffect(() => {
+    const sr = scrollreveal({
+      origin: 'left',
+      distance: '80px',
+      duration: 1000,
+      reset: false,
+    })
+    sr.reveal(
+      `
+       #governance
+    `,
+      { easing: 'ease-in' },
+    )
+  }, [])
+
   const items = [{ label: 'Governance', url: '/governance' }]
 
   const home = {
@@ -111,7 +128,7 @@ const GovernancePage = () => {
 
   return (
     <>
-      <div className="container mt-4">
+      <div className="container mt-4" id="governance">
         <div className="row">
           <div className="col-md-12">
             <Section>

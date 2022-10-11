@@ -28,7 +28,6 @@
     "react-icons": "^4.4.0",
     "react-router-dom": "^6.3.0",
     "recharts": "^2.1.13",
-    "scrollreveal": "^4.0.9",
     "styled-components": "^5.3.5",
     "sweetalert2": "^11.4.29",
     "yup": "^0.32.11"

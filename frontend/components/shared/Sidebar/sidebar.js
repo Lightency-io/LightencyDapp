@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { logoPNG } from '../../../assets/img'
 import {
   SDivider,
@@ -49,9 +49,10 @@ const Sidebar = ({ isCouncil, sidebarOpen, setSidebarOpen, logout, login }) => {
       // search functionality
     }
   }
+
   return (
     <div>
-      <SSidebar>
+      <SSidebar style={{ width: sidebarOpen ? `11rem` : `` }}>
         <>
           <SSidebarButton
             isOpen={sidebarOpen}
