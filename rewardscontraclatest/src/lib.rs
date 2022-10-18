@@ -9,7 +9,8 @@ use near_sdk::collections::{Vector, UnorderedMap};
 pub struct Data {
     amount:u128,
     time:u64,
-    reward:u128,
+    reward:f64,
+    next_reward_time:u64,
     unstaked_amount:u128,
     unstake_timestamp:u64
 }
@@ -69,7 +70,8 @@ impl Rewardercontract {
             let data = Data {
                 amount : amount,
                 time: env::block_timestamp(),
-                reward:0,
+                reward:0 as f64,
+                next_reward_time:env::block_timestamp() + 120000000,
                 unstaked_amount:0,
                 unstake_timestamp:0
             };
@@ -94,10 +96,10 @@ impl Rewardercontract {
         existance
     }
 
-    pub fn get_totalstaked(&self) -> u128 {
-        let mut sum:u128= 0;
+    pub fn get_totalstaked(&self) -> f64 {
+        let mut sum:f64= 0.0;
         for i in self.staker_data.values_as_vector().to_vec() {
-                sum = sum + i.amount;
+                sum = sum + i.amount as f64+ i.reward ;
         }
         sum
     }
@@ -156,8 +158,8 @@ impl Rewardercontract {
 
     }
 
-    pub fn get_total_amount_per_wallet(&self, account:String) -> u128{
-        self.get_data(account).amount
+    pub fn get_total_amount_per_wallet(&self, account:String) -> f64{
+        self.get_data(account.clone()).amount as f64+ self.get_data(account.clone()).reward
     }
 
     pub fn calculaterewards(&self,account:String)-> f64{
@@ -170,4 +172,16 @@ impl Rewardercontract {
         let reward = (apy * staked_per_wallet as f64) as f64;
         return reward;
     } 
+
+    pub fn update_reward(&mut self,account:String){
+        let mut new_data= self.get_data(account.clone());
+        if env::block_timestamp() > new_data.next_reward_time {
+            let add_reward= self.calculaterewards(account.clone());
+            new_data.reward = new_data.reward + add_reward;
+            new_data.next_reward_time = new_data.next_reward_time + 120000000;
+            self.staker_data.insert(&account, &new_data);
+        }else {
+            panic!("You have not earned reward yet");
+        }
+    }
 }
