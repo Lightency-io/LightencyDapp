@@ -2,10 +2,11 @@ use near_sdk::{ext_contract};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env,Gas, near_bindgen};
 
+pub const TGAS: u64 = 1_000_000_000_000;
 
-#[ext_contract(ext_lightency_reward)]
-pub trait Lightencyreward {
-    fn add_staker(&mut self, account:String, amount:u128);
+#[ext_contract(ext_lts)]
+pub trait Lts {
+    fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
 }
 
 // Define the contract structure
@@ -32,11 +33,14 @@ impl StakingPoolContract {
         Self {
         }
     }
-    // add staker 
-    pub fn add_staker(&mut self, account:String, amount:u128) {
-        let contract = "rewarder_contract.testnet".to_string().try_into().unwrap();
-        ext_lightency_reward::ext(contract)
-            .with_static_gas(Gas(5 * 1000000000000))
-            .add_staker(account,amount);
+    
+    pub fn transfer_lts (&mut self, amount:u128){
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        // transfer lts to the singner 
+        ext_lts::ext(account_lts)
+        .with_static_gas(Gas(2 * TGAS))
+        .with_attached_deposit(1)
+        .ft_transfer("staking_contract.testnet".to_string(),(amount*100000000).to_string(),"".to_string());
     }
+
 }

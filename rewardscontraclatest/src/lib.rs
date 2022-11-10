@@ -4,6 +4,8 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, Gas};
 use near_sdk::collections::{Vector, UnorderedMap};
 
+pub const TGAS: u64 = 1_000_000_000_000;
+
 #[derive(BorshDeserialize, BorshSerialize)]
 #[derive(Serialize,Deserialize)]
 pub struct Data {
@@ -14,10 +16,10 @@ pub struct Data {
     unstaked_amount:u128,
     unstake_timestamp:u64
 }
-#[ext_contract(ext_ft)]
-pub trait Rewardpool {
-    #[payable]
-    fn pay(&mut self, amount: u128, to: String);
+#[ext_contract(ext_lts)]
+pub trait Lts {
+    fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
+    fn ft_balance_of (&mut self, account_id:String)->u128;
 }
 
 // Define the contract structure
@@ -130,37 +132,50 @@ impl Rewardercontract {
         }
     }
 
-    pub fn pay(&self ,amount:u128 , to:String){
-        let account = "lightencyrewardpool.testnet".to_string().try_into().unwrap();
-        ext_ft::ext(account)
-            .with_static_gas(Gas(5 * 1000000000000))
-            .pay(amount,to);
-        // let promise = ext_rewardpool::pay(
-        //     "lightencyrewarder.testnet".to_string().try_into().unwrap(),
-        //     0,
-        //     Gas(50000000000000)
-        // );
+    pub fn withdraw(&mut self, account:String, amount:u128){
+        if self.check_staker(account.clone()){
+            if env::block_timestamp() > self.get_data(account.clone()).unstake_timestamp + 180000000 {
+                if amount > self.get_data(account.clone()).unstaked_amount {
+                    panic!("You don't have enough unstaked amount !!!");
+                }else {
+                    let mut data=self.get_data(account.clone());
+                    data.unstaked_amount-=amount;
+                    self.staker_data.insert(&account.clone(), &data);
+                }
+            }else {
+                panic!("You must wait 48 Hours after your last unstake");
+            }
+        }else {
+            panic!("You are not one of the unstakers");
+        }
     }
 
-    pub fn withdraw(&mut self){
-        for i in 0..self.redeemers.len(){
-            match self.redeemers.get(i){
-                Some(r) => if r==env::signer_account_id().to_string() {
-                    //let data2= self.query_data_staker_callback(self.get_data_staker(env::signer_account_id().to_string()));
-                    //let rewards = self.calculaterewards(data2,data2.time);
-                    self.pay(1,env::signer_account_id().to_string());
-                    self.redeemers.swap_remove(i);
-                },
-                None => panic!("you are not included in redeemers list"),
-            }
-
+    pub fn withdraw_reward(&mut self,account:String){
+        if self.check_staker(account.clone()){
+            let mut data=self.get_data(account.clone());
+            let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+            ext_lts::ext(account_lts)
+                .with_static_gas(Gas(2 * TGAS))
+                .with_attached_deposit(1)
+                .ft_transfer(account.clone(),((data.reward*100000000.0) as u128).to_string(),"".to_string());
+            data.reward=0.0;
+            self.staker_data.insert(&account.clone(), &data);
+        }else {
+            panic!("You are not one of the unstakers");
         }
-
     }
 
     pub fn get_total_amount_per_wallet(&self, account:String) -> f64{
         self.get_data(account.clone()).amount as f64+ self.get_data(account.clone()).reward
     }
+
+    // pub fn get_balance(&self) -> u128 {
+    //     let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+    //     ext_lts::ext(account_lts)
+    //             .with_static_gas(Gas(2 * TGAS))
+    //             .ft_balance_of(env::current_account_id().to_string());
+    // }
+
 
     pub fn calculaterewards(&self,account:String)-> f64{
         //Reward to stakers= Total staked (t) X APY(t) 
