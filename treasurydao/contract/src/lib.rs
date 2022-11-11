@@ -116,6 +116,7 @@ impl CouncilProposal{
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TreasuryDao {
+    stakers: Vec<String>,
     members: UnorderedMap<String,u8>,
     proposals: Vec<CouncilProposal>,
 }
@@ -144,6 +145,7 @@ impl TreasuryDao {
     pub fn new() -> Self {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         Self {
+            stakers: Vec::new(),
             members : UnorderedMap::new(b"m"),
             proposals : Vec::new(),
         }
@@ -276,13 +278,18 @@ impl TreasuryDao {
         proposal_name: String,
         vote: u8
     ){
-        assert_eq!(
-            self.check_member(env::signer_account_id().to_string()),
-            true,
-            "You must be one of the dao members to vote"
-        );
-        let proposal =self.get_specific_proposal(proposal_name).create_vote(vote);
-        self.replace_proposal(proposal);
+        if env::block_timestamp() < self.get_specific_proposal(proposal_name.clone()).end_time() {
+            assert_eq!(
+                self.check_member(env::signer_account_id().to_string()),
+                true,
+                "You must be one of the dao members to vote"
+            );
+            let proposal =self.get_specific_proposal(proposal_name.clone()).create_vote(vote);
+            self.replace_proposal(proposal);
+        }else {
+            panic!("Proposal has been expired");
+        }
+        
     }
 
     // add a council
@@ -295,9 +302,54 @@ impl TreasuryDao {
         self.members.insert(&account, &0);
     }
 
+    // delete all stakers 
+    pub fn delete_stakers (&mut self) {
+        assert_self();
+        self.stakers.clear();
+    }
+
+    // delete specific staker 
+    pub fn delete_specific_staker (&mut self, account:String) {
+        assert_self();
+        for i in 0..self.stakers.len(){
+            if self.stakers.get(i).unwrap() == &account {
+                self.stakers.swap_remove(i);
+                break;
+            }
+        }
+    }
+
+    // get list of stakers
+    pub fn get_stakers (&self) -> Vec<String> {
+        self.stakers.clone()
+    }
+
+    // Check staker
+    pub fn check_staker (&self, account:String) -> bool{
+        let mut existance = false;
+        for i in 0..self.stakers.len() {
+            if self.stakers.get(i).unwrap() == &account {
+                existance = true;
+            }
+        }
+        existance
+    }
+
+    // add a staker
+    pub fn add_staker (&mut self, account:String) {
+        if self.check_staker(account.clone()) == false{
+            self.stakers.push(account);
+        }
+    }
+
     // add community
     pub fn add_community (&mut self,account:String) {
-        self.members.insert(&account, &1);
+        if self.check_staker(account.clone()) == true {
+            self.members.insert(&account, &1);
+        }else {
+            panic!("You must be a staker to join community");
+        }
+        
     }
 
     // check the proposal and return a message

@@ -22,6 +22,11 @@ pub trait Lts {
     fn ft_balance_of (&mut self, account_id:String)->u128;
 }
 
+#[ext_contract(ext_treasury)]
+pub trait Treasury {
+    fn add_staker (&mut self, account:String);
+}
+
 // Define the contract structure
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -78,11 +83,20 @@ impl Rewardercontract {
                 unstake_timestamp:0
             };
             self.staker_data.insert(&account, &data);
+            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
+            ext_treasury::ext(account_treasury)
+                .with_static_gas(Gas(2 * TGAS))
+                .add_staker(account.clone());
         }else {
             let mut data = self.staker_data.get(&account).unwrap(); 
             data.amount+=amount;
             data.time = env::block_timestamp(); 
             self.staker_data.insert(&account, &data);
+            self.staker_data.insert(&account, &data);
+            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
+            ext_treasury::ext(account_treasury)
+                .with_static_gas(Gas(2 * TGAS))
+                .add_staker(account.clone());
         }
     }
 
