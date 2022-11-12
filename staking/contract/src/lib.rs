@@ -53,13 +53,13 @@ impl StakingContract {
     // stake function 
     pub fn stake(&self, amount: u128) -> Promise {
         let account_lts= "light-token.testnet".to_string().try_into().unwrap();
-        // Create a promise to call HelloNEAR.get_greeting()
+        // Create a promise to call tranfer LTS function
         let promise = ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))
         .with_attached_deposit(1)
         .ft_transfer("lightencypool.testnet".to_string(),(amount*100000000).to_string(),"".to_string());
         
-        return promise.then( // Create a promise to callback query_greeting_callback
+        return promise.then( // Create a promise to callback staking_callback
         Self::ext(env::current_account_id())
         .with_static_gas(Gas(10 * TGAS))
         .staking_callback(env::signer_account_id().to_string(),amount)
@@ -81,35 +81,68 @@ impl StakingContract {
         p
     }
 
-    // unstake function
-    pub fn unstake(&mut self, amount: u128) {
-        // account as account id
-        let account = "rewarder_contract.testnet".to_string().try_into().unwrap();
-        let account_pool = "lightencypool.testnet".to_string().try_into().unwrap();
-        // cross call function to change data in the reward contract
-        ext_ft::ext(account)
-            .with_static_gas(Gas(5 * TGAS))
-            .unstake(env::signer_account_id().to_string(),amount)
-            .and(
-                ext_pool::ext(account_pool)
-                .with_static_gas(Gas(2 * TGAS))
-                .transfer_lts(amount)
-            );
+
+    // unstake function 
+    pub fn unstake(&self, amount: u128) -> Promise {
+        let account_pool= "lightencypool.testnet".to_string().try_into().unwrap();
+        // Create a promise to call tranfer LTS function
+        let promise = ext_pool::ext(account_pool)
+        .with_static_gas(Gas(7 * TGAS))
+        .transfer_lts(amount);
+            
+        return promise.then( // Create a promise to callback unstaking_callback
+        Self::ext(env::current_account_id())
+        .with_static_gas(Gas(10 * TGAS))
+        .unstaking_callback(env::signer_account_id().to_string(),amount)
+        )
+    }
+    
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn unstaking_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>, account:String ,amount: u128) -> Promise {
+        let account_reward = "rewarder_contract.testnet".to_string().try_into().unwrap();
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error contacting the pool contract");
+        }
+    
+        // Return the promise
+        let p = ext_ft::ext(account_reward)
+        .with_static_gas(Gas(2 * TGAS))
+        .unstake(account,amount);
+        p
     }
 
-    pub fn withdraw(&mut self, amount:u128){
-        let account = "rewarder_contract.testnet".to_string().try_into().unwrap();
+
+    // withdraw function 
+    pub fn withdraw(&self, amount: u128) -> Promise {
         let account_lts= "light-token.testnet".to_string().try_into().unwrap();
-
-        ext_ft::ext(account)
-            .with_static_gas(Gas(5 * TGAS))
-            .withdraw(env::signer_account_id().to_string(),amount)
-            .and(
-                ext_lts::ext(account_lts)
-                .with_static_gas(Gas(2 * TGAS))
-                .with_attached_deposit(1)
-                .ft_transfer(env::signer_account_id().to_string(),(amount*100000000).to_string(),"".to_string())
-            );
+        // Create a promise to call tranfer LTS function
+        let promise = ext_lts::ext(account_lts)
+        .with_static_gas(Gas(2 * TGAS))
+        .with_attached_deposit(1)
+        .ft_transfer(env::signer_account_id().to_string(),(amount*100000000).to_string(),"".to_string());
+            
+        return promise.then( // Create a promise to callback withdraw_callback
+        Self::ext(env::current_account_id())
+        .with_static_gas(Gas(10 * TGAS))
+        .withdraw_callback(env::signer_account_id().to_string(),amount)
+        )
     }
+    
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn withdraw_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>, account:String ,amount: u128) -> Promise {
+        let account_reward = "rewarder_contract.testnet".to_string().try_into().unwrap();
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error contacting the pool contract");
+        }
+    
+        // Return the promise
+        let p = ext_ft::ext(account_reward)
+            .with_static_gas(Gas(5 * TGAS))
+            .withdraw(account,amount);
+        p
+    }
+
 
 }
