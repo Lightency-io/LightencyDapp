@@ -13,6 +13,7 @@ serde_json = "*"
 near-sdk = "4.0.0"
 uint = { version = "0.9.3", default-features = false }
 
+
 [dev-dependencies]
 base64 = "0.13"
 near-primitives = "0.1.0-pre.1"

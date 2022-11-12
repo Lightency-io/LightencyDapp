@@ -1,6 +1,6 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract, Promise};
-use near_sdk::{env, near_bindgen, Gas, log};
+use near_sdk::{ext_contract, Promise, PromiseError};
+use near_sdk::{env, near_bindgen, Gas};
 
 pub const TGAS: u64 = 1_000_000_000_000;
 
@@ -50,23 +50,35 @@ impl StakingContract {
 
     // Methods.
 
-    // deposit stake function
-    #[payable]
-    pub fn deposit_stake(&mut self, amount: u128) {
+    // stake function 
+    pub fn stake(&self, amount: u128) -> Promise {
         let account_lts= "light-token.testnet".to_string().try_into().unwrap();
-        let account_reward = "rewarder_contract.testnet".to_string().try_into().unwrap();
-
-        let a = ext_lts::ext(account_lts)
+        // Create a promise to call HelloNEAR.get_greeting()
+        let promise = ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))
         .with_attached_deposit(1)
         .ft_transfer("lightencypool.testnet".to_string(),(amount*100000000).to_string(),"".to_string());
         
-        let b = ext_ft::ext(account_reward)
-        .with_static_gas(Gas(3 * TGAS))
-        .add_staker(env::signer_account_id().to_string(), amount);
+        return promise.then( // Create a promise to callback query_greeting_callback
+        Self::ext(env::current_account_id())
+        .with_static_gas(Gas(10 * TGAS))
+        .staking_callback(env::signer_account_id().to_string(),amount)
+        )
+    }
 
-        a.then(b);  
-        
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn staking_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>, account:String ,amount: u128) -> Promise {
+        let account_reward = "rewarder_contract.testnet".to_string().try_into().unwrap();
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error contacting the pool contract");
+        }
+
+        // Return the promise
+        let p = ext_ft::ext(account_reward)
+        .with_static_gas(Gas(2 * TGAS))
+        .add_staker(account, amount);
+        p
     }
 
     // unstake function
