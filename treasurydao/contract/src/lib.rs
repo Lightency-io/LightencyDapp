@@ -1,7 +1,14 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap};
-use near_sdk::{env, near_bindgen};
+use near_sdk::{env, near_bindgen, ext_contract,Gas};
 use serde::{Serialize,Deserialize};
+
+pub const TGAS: u64 = 1_000_000_000_000;
+
+#[ext_contract(ext_lts)]
+pub trait Lts {
+    fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
+}
 
 // VOTE
 // Vote structor 
@@ -363,5 +370,14 @@ impl TreasuryDao {
             let msg="Proposal refused".to_string();
             msg
         }
+    }
+
+    // fund function 
+    pub fn fund (&mut self,account:String,amount:u128){
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        ext_lts::ext(account_lts)
+        .with_static_gas(Gas(2 * TGAS))
+        .with_attached_deposit(1)
+        .ft_transfer(account,(amount*100000000).to_string(),"".to_string());
     }
 }

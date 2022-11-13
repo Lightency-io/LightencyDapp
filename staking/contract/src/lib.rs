@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract, Promise, PromiseError};
+use near_sdk::{ext_contract, Promise, PromiseError,AccountId};
 use near_sdk::{env, near_bindgen, Gas};
 
 pub const TGAS: u64 = 1_000_000_000_000;
@@ -20,6 +20,8 @@ pub trait Rewarder {
 #[ext_contract(ext_lts)]
 pub trait Lts {
     fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
+    fn mint_token(&mut self, account_id: AccountId, amount: u128);
+    fn burn_token(&mut self, account_id: AccountId, amount: u128);
 }
 
 // Define the contract structure
@@ -49,6 +51,35 @@ impl StakingContract {
     }
 
     // Methods.
+
+    pub fn transfer (&mut self,amount: u128)-> Promise{
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+
+        let promise = ext_lts::ext(account_lts)
+        .with_static_gas(Gas(2 * TGAS))
+        .burn_token(env::signer_account_id(),amount*100000000);
+
+        return promise.then( // Create a promise to callback staking_callback
+            Self::ext(env::current_account_id())
+            .with_static_gas(Gas(10 * TGAS))
+            .transfer_callback(amount)
+        )
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn transfer_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError> ,amount: u128) -> Promise {
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error in the transfer process");
+        }
+
+        // Return the promise
+        let p = ext_lts::ext(account_lts)
+        .with_static_gas(Gas(2 * TGAS))
+        .mint_token(env::current_account_id(), amount*100000000);
+        p
+    }
 
     // stake function 
     pub fn stake(&self, amount: u128) -> Promise {
