@@ -83,7 +83,7 @@ impl Rewardercontract {
                 unstake_timestamp:0
             };
             self.staker_data.insert(&account, &data);
-            let account_treasury= "energydao.testnet".to_string().try_into().unwrap();
+            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
             ext_treasury::ext(account_treasury)
                 .with_static_gas(Gas(2 * TGAS))
                 .add_staker(account.clone());
