@@ -109,7 +109,7 @@ impl CouncilProposal{
 
     // Get the end time of a proposal 
     pub fn end_time(&self) -> u64 {
-        self.time_of_creation+(self.duration_days*86400000000+self.duration_hours*3600000000+self.duration_min*60000000)
+        self.time_of_creation+(self.duration_days*86400000000000+self.duration_hours*3600000000000+self.duration_min*60000000000)
     }
 
     // Check if the time of a proposal is end or not 
