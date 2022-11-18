@@ -1,6 +1,6 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap};
-use near_sdk::{env, near_bindgen, ext_contract,Gas};
+use near_sdk::{env, near_bindgen, ext_contract,Gas,log};
 use serde::{Serialize,Deserialize};
 
 pub const TGAS: u64 = 1_000_000_000_000;
@@ -109,6 +109,7 @@ impl CouncilProposal{
 
     // Get the end time of a proposal 
     pub fn end_time(&self) -> u64 {
+        log!("{}",self.time_of_creation+(self.duration_days*86400000000000+self.duration_hours*3600000000000+self.duration_min*60000000000));
         self.time_of_creation+(self.duration_days*86400000000000+self.duration_hours*3600000000000+self.duration_min*60000000000)
     }
 
@@ -302,6 +303,10 @@ impl TreasuryDao {
             panic!("Proposal has been expired");
         }
         
+    }
+
+    pub fn get_end_time(&self , proposal_name: String) -> u64{
+        self.get_specific_proposal(proposal_name.clone()).end_time()
     }
 
     // add a council

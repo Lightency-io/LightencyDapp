@@ -93,6 +93,10 @@ impl Rewardercontract {
             data.time = env::block_timestamp(); 
             self.staker_data.insert(&account, &data);
             self.staker_data.insert(&account, &data);
+            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
+            ext_treasury::ext(account_treasury)
+                .with_static_gas(Gas(2 * TGAS))
+                .add_staker(account.clone());
         }
     }
 

@@ -92,7 +92,7 @@ impl StakingContract {
         
         return promise.then( // Create a promise to callback staking_callback
         Self::ext(env::current_account_id())
-        .with_static_gas(Gas(10 * TGAS))
+        .with_static_gas(Gas(12 * TGAS))
         .staking_callback(env::signer_account_id().to_string(),amount)
         )
     }
@@ -107,7 +107,7 @@ impl StakingContract {
 
         // Return the promise
         let p = ext_ft::ext(account_reward)
-        .with_static_gas(Gas(2 * TGAS))
+        .with_static_gas(Gas(5 * TGAS))
         .add_staker(account, amount);
         p
     }
