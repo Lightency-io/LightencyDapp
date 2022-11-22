@@ -183,29 +183,29 @@ impl Rewardercontract {
         self.get_data(account.clone()).amount as f64+ self.get_data(account.clone()).reward
     }
 
-    // pub fn get_balance(&self) -> u128 {
-    //     let account_lts= "light-token.testnet".to_string().try_into().unwrap();
-    //     ext_lts::ext(account_lts)
-    //             .with_static_gas(Gas(2 * TGAS))
-    //             .ft_balance_of(env::current_account_id().to_string());
-    // }
+    pub fn get_balance(&self) {
+        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        ext_lts::ext(account_lts)
+                .with_static_gas(Gas(2 * TGAS))
+                .ft_balance_of(env::current_account_id().to_string());
+    }
 
 
-    pub fn calculaterewards(&self,account:String)-> f64{
+    pub fn calculaterewards(&self,account:String, pool:f64)-> f64{
         //Reward to stakers= Total staked (t) X APY(t) 
         //APY(t)=Staking pool supply/total staked(t) X Yield parameter.
         let staked_per_wallet = self.get_total_amount_per_wallet(account);
-        let reward_pool = 100 as f64;
+        let reward_pool = pool;
         let total_reward = (reward_pool / 1095 as f64) as f64;
         let apy=(total_reward / self.get_totalstaked() as f64) as f64;
         let reward = (apy * staked_per_wallet as f64) as f64;
         return reward;
     } 
 
-    pub fn update_reward(&mut self,account:String){
+    pub fn update_reward(&mut self,account:String,pool:f64){
         let mut new_data= self.get_data(account.clone());
         if env::block_timestamp() > new_data.next_reward_time {
-            let add_reward= self.calculaterewards(account.clone());
+            let add_reward= self.calculaterewards(account.clone(),pool);
             new_data.reward = new_data.reward + add_reward;
             new_data.next_reward_time = new_data.next_reward_time + 120000000;
             self.staker_data.insert(&account, &new_data);
