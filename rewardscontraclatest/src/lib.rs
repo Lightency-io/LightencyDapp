@@ -2,7 +2,7 @@ use near_sdk::{ext_contract};
 use serde::{Serialize, Deserialize};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, Gas};
-use near_sdk::collections::{Vector, UnorderedMap};
+use near_sdk::collections::{UnorderedMap};
 
 pub const TGAS: u64 = 1_000_000_000_000;
 
@@ -31,7 +31,6 @@ pub trait Treasury {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Rewardercontract {
-    redeemers:Vector<String>,
     staker_data:UnorderedMap<String,Data>,
 }
 
@@ -57,7 +56,6 @@ impl Rewardercontract {
     pub fn new() -> Self {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         Self {
-            redeemers: Vector::new(b"a"),
             staker_data: UnorderedMap::new(b"m"),
         }
     }
@@ -68,17 +66,18 @@ impl Rewardercontract {
         self.staker_data.clear();
     }
 
-    pub fn redeem(&mut self,account:String){
-        self.redeemers.push(&account);
-    }
-
     pub fn add_staker(&mut self, account:String, amount:u128) {
+        assert_eq!(
+            env::signer_account_id().to_string(),
+            "light-token.testnet".to_string(),
+            "Can only be called by the LTS contract"
+        );
         if self.staker_data.get(&account).is_none() {
             let data = Data {
                 amount : amount,
                 time: env::block_timestamp(),
                 reward:0 as f64,
-                next_reward_time:env::block_timestamp() + 120000000,
+                next_reward_time:env::block_timestamp() + 86400000000000,
                 unstaked_amount:0,
                 unstake_timestamp:0
             };
@@ -207,7 +206,7 @@ impl Rewardercontract {
         if env::block_timestamp() > new_data.next_reward_time {
             let add_reward= self.calculaterewards(account.clone(),pool);
             new_data.reward = new_data.reward + add_reward;
-            new_data.next_reward_time = new_data.next_reward_time + 120000000;
+            new_data.next_reward_time = new_data.next_reward_time + 86400000000000;
             self.staker_data.insert(&account, &new_data);
         }else {
             panic!("You have not earned reward yet");

@@ -48,6 +48,7 @@ pub struct CouncilProposal{
     pub duration_min:u64,
     pub list_voters:Vec<String>,
     pub votes:Vec<Vote>,
+    pub receiver:String
 }
 
 impl CouncilProposal{
@@ -66,6 +67,7 @@ impl CouncilProposal{
             duration_min:0,
             list_voters:Vec::new(),
             votes:Vec::new(),
+            receiver: String::new(),
         }
     }
 
@@ -103,7 +105,8 @@ impl CouncilProposal{
             duration_hours: self.duration_hours, 
             duration_min: self.duration_min, 
             list_voters: self.list_voters.clone(),
-            votes: self.votes.clone() 
+            votes: self.votes.clone(),
+            receiver: self.receiver.clone()
         }
     }
 
@@ -163,6 +166,7 @@ impl TreasuryDao {
     }
 
     pub fn init(&mut self) {
+        assert_self();
         self.members.insert(&env::current_account_id().to_string(), &0);
     }
 
@@ -227,6 +231,7 @@ impl TreasuryDao {
         duration_days: u64,
         duration_hours: u64,
         duration_min: u64,
+        receiver:String,
     ){
         assert_eq!(
             self.check_council(env::signer_account_id().to_string()),
@@ -246,13 +251,19 @@ impl TreasuryDao {
             duration_hours:duration_hours,
             duration_min:duration_min,
             list_voters:Vec::new(),
-            votes:Vec::new()
+            votes:Vec::new(),
+            receiver:receiver
         };
         self.proposals.push(proposal);
     }
 
     // Replace a proposal whith a new one 
     pub fn replace_proposal(&mut self, proposal: CouncilProposal){
+        assert_eq!(
+            self.check_council(env::signer_account_id().to_string()),
+            true,
+            "Proposals can be created only by the councils"
+        );
         let mut index =0;
         for i in 0..self.proposals.len(){
             match self.proposals.get(i){
@@ -302,7 +313,6 @@ impl TreasuryDao {
         }else {
             panic!("Proposal has been expired");
         }
-        
     }
 
     pub fn get_end_time(&self , proposal_name: String) -> u64{
@@ -354,6 +364,11 @@ impl TreasuryDao {
 
     // add a staker
     pub fn add_staker (&mut self, account:String) {
+        assert_eq!(
+            env::predecessor_account_id().to_string(),
+            "rewarder_contract.testnet".to_string(),
+            "You are not authorized to execute this function"
+        );
         if self.check_staker(account.clone()) == false{
             self.stakers.push(account);
         }
@@ -366,7 +381,6 @@ impl TreasuryDao {
         }else {
             panic!("You must be a staker to join community");
         }
-        
     }
 
     // check the proposal and return a message
@@ -384,6 +398,11 @@ impl TreasuryDao {
 
     // fund function 
     pub fn fund (&mut self,account:String,amount:u128){
+        assert_eq!(
+            env::signer_account_id().to_string(),
+            "alach.testnet".to_string(),
+            "You are not authorized to execute this function"
+        );
         let account_lts= "light-token.testnet".to_string().try_into().unwrap();
         ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))

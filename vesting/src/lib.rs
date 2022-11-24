@@ -65,6 +65,25 @@ fn assert_self() {
     );
 }
 
+// Function to mint LTS 
+pub fn mint_lts (amount:u128) {
+    let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+
+    ext_ft::ext(contract_account)
+        .with_static_gas(Gas(5_000_000_000_000))
+        .mint_token(env::signer_account_id(), amount*100000000);
+}
+
+// Function to add the vestor in the storage of the LTS token
+pub fn add_storage_deposit () {
+    let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+
+    ext_ft::ext(contract_account)
+        .with_attached_deposit(1000000000000000000000000)
+        .with_static_gas(Gas(5_000_000_000_000))
+        .storage_deposit(env::signer_account_id().to_string());
+}
+
 // Implement the contract structure
 // To be implemented in the front end
 #[near_bindgen]
@@ -86,21 +105,21 @@ impl VestingContract {
     }
 
     // Function that delete a specific vestor 
-    pub fn delete_a_vestor (&mut self,name:String){
-        if name=="".to_string() {
-            for i in 0..self.records.len() {
-                if self.records.get(i).unwrap().owner_id == env::signer_account_id().to_string() {
-                    self.records.swap_remove(i);
-                }
-            }
-        }else {
-            for i in 0..self.records.len() {
-                if self.records.get(i).unwrap().owner_id == name {
-                    self.records.swap_remove(i);
-                }
-            }
-        }
-    }
+    // pub fn delete_a_vestor (&mut self,name:String){
+    //     if name=="".to_string() {
+    //         for i in 0..self.records.len() {
+    //             if self.records.get(i).unwrap().owner_id == env::signer_account_id().to_string() {
+    //                 self.records.swap_remove(i);
+    //             }
+    //         }
+    //     }else {
+    //         for i in 0..self.records.len() {
+    //             if self.records.get(i).unwrap().owner_id == name {
+    //                 self.records.swap_remove(i);
+    //             }
+    //         }
+    //     }
+    // }
 
     /****** GET FUNCTIONS ******/
 
@@ -164,26 +183,24 @@ impl VestingContract {
             nb_time_payment: 1,
         };
         self.records.push(&vestor);
-        self.add_storage_deposit();
-        self.mint_lts(amount_of_token/4);
+        add_storage_deposit();
+        mint_lts(amount_of_token/4);
     }
 
     pub fn refresh (&mut self,v_id: String) {
         if self.get_vestor(&v_id).nb_time_payment == 1 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (2 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("second payment done");
         }
-        env::log_str("hihihihihi");
         if self.get_vestor(&v_id).nb_time_payment == 2 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (4 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("third payment done");
         }
-        env::log_str("hihihihi2222");
         if self.get_vestor(&v_id).nb_time_payment == 3 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (6 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("fourth payment done");
         }
         if self.get_vestor(&v_id).nb_time_payment == 4 { 
@@ -194,26 +211,6 @@ impl VestingContract {
 
 
     /****** BACKUP FUNCTIONS ******/
-
-    // Function to mint LTS 
-    pub fn mint_lts (&mut self, amount:u128) {
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-        ext_ft::ext(contract_account)
-            .with_static_gas(Gas(5_000_000_000_000))
-            .mint_token(env::signer_account_id(), amount*100000000);
-    }
-
-    // Function to add the vestor in the storage of the LTS token
-    pub fn add_storage_deposit (&mut self) {
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-        ext_ft::ext(contract_account)
-            .with_attached_deposit(1000000000000000000000000)
-            .with_static_gas(Gas(5_000_000_000_000))
-            .storage_deposit(env::signer_account_id().to_string());
-    }
-
 
 
     // Function to replace a vestor by the new one
