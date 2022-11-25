@@ -68,7 +68,7 @@ impl Rewardercontract {
 
     pub fn add_staker(&mut self, account:String, amount:u128) {
         assert_eq!(
-            env::signer_account_id().to_string(),
+            env::predecessor_account_id().to_string(),
             "light-token.testnet".to_string(),
             "Can only be called by the LTS contract"
         );
@@ -120,7 +120,19 @@ impl Rewardercontract {
     }
 
     pub fn get_data(&self, account:String) -> Data {
-        self.staker_data.get(&account).unwrap()
+        if self.staker_data.get(&account).is_none(){
+            let data = Data {
+                amount : 0,
+                time: 0,
+                reward:0 as f64,
+                next_reward_time:0,
+                unstaked_amount:0,
+                unstake_timestamp:0
+            };
+            data
+        }else {
+            self.staker_data.get(&account).unwrap()
+        }
     } 
 
     pub fn unstake(&mut self, account:String, amount:u128){

@@ -52,6 +52,14 @@ fn assert_self() {
     );
 }
 
+fn assert() {
+    if env::signer_account_id().to_string() != env::current_account_id().to_string() {
+        if env::signer_account_id().to_string() != "lightency_contract.testnet".to_string() {
+            panic!("You're not authorised to execute this function");
+        }
+    }
+}
+
 #[near_bindgen]
 impl Contract {
     /// Initializes the contract with the given total supply owned by the given `owner_id` with
@@ -117,13 +125,11 @@ impl Contract {
     }
 
     pub fn mint_token(&mut self, account_id: AccountId, amount: u128) {
-        assert_self();
-        self.token.internal_deposit(&account_id, amount.into());
-        self.on_tokens_minted(account_id, amount);
+            self.token.internal_deposit(&account_id, amount.into());
+            self.on_tokens_minted(account_id, amount);
     }
 
     pub fn burn_token(&mut self, account_id: AccountId, amount: u128) {
-        assert_self();
         self.token.internal_withdraw(&account_id, amount.into());
     }
 
@@ -147,8 +153,6 @@ impl Contract {
         panic!("There was an error contacting the rewarder contract");
         }
     }
-
-
 }
 
 near_contract_standards::impl_fungible_token_core!(Contract, token);

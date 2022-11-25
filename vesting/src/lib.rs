@@ -1,11 +1,13 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::Vector;
-use near_sdk::ext_contract;
+use near_sdk::{ext_contract, Promise, PromiseError};
 use near_sdk::{env, near_bindgen, Gas, AccountId};
 use serde::{Serialize,Deserialize};
 
+pub const TGAS: u64 = 1_000_000_000_000;
+
 #[ext_contract(ext_ft)]
-pub trait lighttoken {
+pub trait Lighttoken {
     fn mint_token(&mut self, account_id: AccountId, amount: u128);
     fn storage_deposit (&mut self, account_id: String);
 }
@@ -63,25 +65,6 @@ fn assert_self() {
         env::predecessor_account_id(),
         "Can only be called by owner"
     );
-}
-
-// Function to mint LTS 
-pub fn mint_lts (amount:u128) {
-    let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-    ext_ft::ext(contract_account)
-        .with_static_gas(Gas(5_000_000_000_000))
-        .mint_token(env::signer_account_id(), amount*100000000);
-}
-
-// Function to add the vestor in the storage of the LTS token
-pub fn add_storage_deposit () {
-    let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-    ext_ft::ext(contract_account)
-        .with_attached_deposit(1000000000000000000000000)
-        .with_static_gas(Gas(5_000_000_000_000))
-        .storage_deposit(env::signer_account_id().to_string());
 }
 
 // Implement the contract structure
@@ -183,24 +166,24 @@ impl VestingContract {
             nb_time_payment: 1,
         };
         self.records.push(&vestor);
-        add_storage_deposit();
-        mint_lts(amount_of_token/4);
+        self.add_storage_deposit();
+        self.mint_lts(amount_of_token/4);
     }
 
     pub fn refresh (&mut self,v_id: String) {
         if self.get_vestor(&v_id).nb_time_payment == 1 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (2 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("second payment done");
         }
         if self.get_vestor(&v_id).nb_time_payment == 2 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (4 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("third payment done");
         }
         if self.get_vestor(&v_id).nb_time_payment == 3 && env::block_timestamp_ms() > self.get_vestor(&v_id).timestamp + (6 * 60000) {
             self.change_data(&self.get_vestor(&v_id).id);
-            mint_lts(self.get_vestor(&v_id).amount_of_token/4);
+            self.mint_lts(self.get_vestor(&v_id).amount_of_token/4);
             env::log_str("fourth payment done");
         }
         if self.get_vestor(&v_id).nb_time_payment == 4 { 
@@ -212,6 +195,52 @@ impl VestingContract {
 
     /****** BACKUP FUNCTIONS ******/
 
+    // Function to mint LTS 
+    pub fn mint_lts (&mut self, amount:u128) -> Promise {
+        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+
+        let promise=ext_ft::ext(contract_account)
+            .with_static_gas(Gas(5_000_000_000_000))
+            .mint_token(env::signer_account_id(), amount*100000000);
+
+        return promise.then( // Create a promise to callback withdraw_callback
+            Self::ext(env::current_account_id())
+            .with_static_gas(Gas(3 * TGAS))
+            .mint_lts_callback()
+            )
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn mint_lts_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError> ) {
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error contacting the token contract");
+        }
+    }
+
+    // Function to add the vestor in the storage of the LTS token
+    pub fn add_storage_deposit (&mut self) -> Promise{
+        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+
+        let promise=ext_ft::ext(contract_account)
+            .with_attached_deposit(1000000000000000000000000)
+            .with_static_gas(Gas(5_000_000_000_000))
+            .storage_deposit(env::signer_account_id().to_string());
+
+            return promise.then( // Create a promise to callback withdraw_callback
+                Self::ext(env::current_account_id())
+                .with_static_gas(Gas(3 * TGAS))
+                .add_storage_callback()
+                )
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn add_storage_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError> ) {
+        // Check if the promise succeeded
+        if call_result.is_err() {
+        panic!("There was an error contacting the token contract");
+        }
+    }
 
     // Function to replace a vestor by the new one
     pub fn replace_vestor (&mut self, vestor:Vestors) {

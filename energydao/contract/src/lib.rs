@@ -34,6 +34,7 @@ impl Vote {
 // Proposal structor
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Serialize, Deserialize)]
 pub struct Proposal{
+    pub id:String,
     pub proposal_type: u8,
     pub proposal_name: String,
     pub description: String,
@@ -52,6 +53,7 @@ pub struct Proposal{
 impl Proposal{
     pub fn new() -> Self{
         Self{
+            id:String::new(),
             proposal_type:0,
             proposal_name: String::new(),
             description: String::new(),
@@ -90,6 +92,7 @@ impl Proposal{
         }
         self.list_voters.push(env::signer_account_id().to_string());
         Self { 
+            id:self.id.clone(),
             proposal_type:self.proposal_type,
             proposal_name: self.proposal_name.clone(), 
             description: self.description.clone(),
@@ -217,6 +220,7 @@ impl EnergyDao {
     // Create a new proposal 
     pub fn create_proposal (
         &mut self,
+        id:String,
         proposal_type:u8,
         proposal_name: String,
         description: String,
@@ -231,6 +235,7 @@ impl EnergyDao {
             "Proposals can be created only by the councils"
         );
         let proposal=Proposal{
+            id:id,
             proposal_type:proposal_type,
             proposal_name: proposal_name,
             description: description,
@@ -253,7 +258,7 @@ impl EnergyDao {
         let mut index =0;
         for i in 0..self.proposals.len(){
             match self.proposals.get(i){
-                Some(p) => if p.proposal_name==proposal.proposal_name {
+                Some(p) => if p.id==proposal.id {
                     index=i;
                 },
                 None => panic!("There is no PROPOSALs"),
@@ -269,11 +274,11 @@ impl EnergyDao {
     }
 
     // Get a spsific proposal 
-    pub fn get_specific_proposal(&self, proposal_name: String) -> Proposal{
+    pub fn get_specific_proposal(&self, id: String) -> Proposal{
         let mut proposal= Proposal::new();
         for i in 0..self.proposals.len() {
             match self.proposals.get(i){
-                Some(p) => if p.proposal_name==proposal_name {
+                Some(p) => if p.id==id {
                     proposal=p.clone();
                 },
                 None => panic!("There is no DAOs"),
@@ -285,16 +290,16 @@ impl EnergyDao {
     // add a vote 
     pub fn add_vote(
         &mut self,
-        proposal_name: String,
+        id: String,
         vote: u8
     ){
-        if env::block_timestamp() < self.get_specific_proposal(proposal_name.clone()).end_time() {
+        if env::block_timestamp() < self.get_specific_proposal(id.clone()).end_time() {
             assert_eq!(
                 self.check_member(env::signer_account_id().to_string()),
                 true,
                 "You must be one of the dao members to vote"
             );
-            let proposal =self.get_specific_proposal(proposal_name.clone()).create_vote(vote);
+            let proposal =self.get_specific_proposal(id.clone()).create_vote(vote);
             self.replace_proposal(proposal);
         }else {
             panic!("Proposal has been expired");
@@ -318,8 +323,8 @@ impl EnergyDao {
     }
 
     // check the proposal and return a message
-    pub fn check_the_proposal(&self,proposal_name: String) -> String{
-        let proposal=self.get_specific_proposal(proposal_name);
+    pub fn check_the_proposal(&self,id: String) -> String{
+        let proposal=self.get_specific_proposal(id);
         let check= proposal.check_proposal();
         if check==true {
             let msg="Proposal accepted".to_string();
