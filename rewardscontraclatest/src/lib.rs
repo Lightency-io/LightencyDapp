@@ -69,7 +69,7 @@ impl Rewardercontract {
     pub fn add_staker(&mut self, account:String, amount:u128) {
         assert_eq!(
             env::predecessor_account_id().to_string(),
-            "light-token.testnet".to_string(),
+            "lts_token.near".to_string(),
             "Can only be called by the LTS contract"
         );
         if self.staker_data.get(&account).is_none() {
@@ -82,7 +82,7 @@ impl Rewardercontract {
                 unstake_timestamp:0
             };
             self.staker_data.insert(&account, &data);
-            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
+            let account_treasury= "treasurydao.near".to_string().try_into().unwrap();
             ext_treasury::ext(account_treasury)
                 .with_static_gas(Gas(2 * TGAS))
                 .add_staker(account.clone());
@@ -92,7 +92,7 @@ impl Rewardercontract {
             data.time = env::block_timestamp(); 
             self.staker_data.insert(&account, &data);
             self.staker_data.insert(&account, &data);
-            let account_treasury= "treasurydao.testnet".to_string().try_into().unwrap();
+            let account_treasury= "treasurydao.near".to_string().try_into().unwrap();
             ext_treasury::ext(account_treasury)
                 .with_static_gas(Gas(2 * TGAS))
                 .add_staker(account.clone());
@@ -178,7 +178,7 @@ impl Rewardercontract {
     pub fn withdraw_reward(&mut self,account:String){
         if self.check_staker(account.clone()){
             let mut data=self.get_data(account.clone());
-            let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+            let account_lts= "lts_token.near".to_string().try_into().unwrap();
             ext_lts::ext(account_lts)
                 .with_static_gas(Gas(2 * TGAS))
                 .with_attached_deposit(1)
@@ -195,7 +195,7 @@ impl Rewardercontract {
     }
 
     pub fn get_balance(&self) {
-        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        let account_lts= "lts_token.near".to_string().try_into().unwrap();
         ext_lts::ext(account_lts)
                 .with_static_gas(Gas(2 * TGAS))
                 .ft_balance_of(env::current_account_id().to_string());

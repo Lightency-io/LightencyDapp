@@ -371,7 +371,7 @@ impl TreasuryDao {
     pub fn add_staker (&mut self, account:String) {
         assert_eq!(
             env::predecessor_account_id().to_string(),
-            "rewarder_contract.testnet".to_string(),
+            "rewarder_contract.near".to_string(),
             "You are not authorized to execute this function"
         );
         if self.check_staker(account.clone()) == false{
@@ -405,10 +405,10 @@ impl TreasuryDao {
     pub fn fund (&mut self,account:String,amount:u128){
         assert_eq!(
             env::signer_account_id().to_string(),
-            "alach.testnet".to_string(),
+            "lightency_watchdog.near".to_string(),
             "You are not authorized to execute this function"
         );
-        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        let account_lts= "lts_token.near".to_string().try_into().unwrap();
         ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))
         .with_attached_deposit(1)

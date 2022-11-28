@@ -35,12 +35,12 @@ impl StakingPoolContract {
     }
     
     pub fn transfer_lts (&mut self, amount:u128){
-        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        let account_lts= "lts_token.near".to_string().try_into().unwrap();
         // transfer lts to the singner 
         ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))
         .with_attached_deposit(1)
-        .ft_transfer("staking_contract.testnet".to_string(),(amount*100000000).to_string(),"".to_string());
+        .ft_transfer("staking_contract.near".to_string(),(amount*100000000).to_string(),"".to_string());
     }
 
 }

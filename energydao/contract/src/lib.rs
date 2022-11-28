@@ -337,7 +337,7 @@ impl EnergyDao {
 
     // fund function 
     pub fn fund (&mut self,account:String,amount:u128){
-        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
+        let account_lts= "lts_token.near".to_string().try_into().unwrap();
         ext_lts::ext(account_lts)
         .with_static_gas(Gas(2 * TGAS))
         .with_attached_deposit(1)

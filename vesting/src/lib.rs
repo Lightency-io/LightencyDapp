@@ -197,7 +197,7 @@ impl VestingContract {
 
     // Function to mint LTS 
     pub fn mint_lts (&mut self, amount:u128) -> Promise {
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+        let contract_account = "lts_token.near".to_string().try_into().unwrap();
 
         let promise=ext_ft::ext(contract_account)
             .with_static_gas(Gas(5_000_000_000_000))
@@ -220,7 +220,7 @@ impl VestingContract {
 
     // Function to add the vestor in the storage of the LTS token
     pub fn add_storage_deposit (&mut self) -> Promise{
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+        let contract_account = "lts_token.near".to_string().try_into().unwrap();
 
         let promise=ext_ft::ext(contract_account)
             .with_attached_deposit(1000000000000000000000000)
