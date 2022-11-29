@@ -116,11 +116,16 @@ Vesting smart contract ( lightency_vesting.near ):
 
 Create an energy certificate in a form of an NFT  ( nft-lightency.near)
 
-nft_mint  :  A function to mint an energy certificate.
-nft_transfer : A function to transfer the Nft to a target wallet.
-nft_approve : A function to confirm  that the  data related to the certificate is correct and the NFT can be minted
-nft_revoke : A function to delete an NFT in some cases. 
-nft_metadata :  A  function to add the needed information to the energy certificate. 
+*nft_mint()  :  A function to mint an energy certificate with an NFT.
+*nft_approve() : A function to grant escrow access to rec_lightency.near contract
 
 
-rec_lightency.near
+
+Fractionalizing an energy certificate (NFT) into shares (FTs) (lightency_rec.near)
+
+*fill_share_holders(): A function to assign to each accountId a number of shares from that REC (NFT)
+*securitize(): A function to fractionalize the REC (NFT), be transferred and a shares contract will be created under the ID of [nft-lightency-near- <tokenId>.lightency_rec.near] according to what we did with fill_share_holders() : each accontId and how many shares he owns.
+
+The Shares Contract (nft-lightency-near- <tokenId>.lightency_rec.near)
+
+*ft_balance_of() : A function to view how many that accountId own shares
