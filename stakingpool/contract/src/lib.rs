@@ -2,6 +2,7 @@ use near_sdk::{ext_contract};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env,Gas, near_bindgen};
 
+
 pub const TGAS: u64 = 1_000_000_000_000;
 
 #[ext_contract(ext_lts)]
@@ -33,7 +34,8 @@ impl StakingPoolContract {
         Self {
         }
     }
-    
+
+
     pub fn transfer_lts (&mut self, amount:u128){
         let account_lts= "light-token.testnet".to_string().try_into().unwrap();
         // transfer lts to the singner 

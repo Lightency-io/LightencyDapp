@@ -345,3 +345,79 @@ impl EnergyDao {
     }
 
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_init(){
+        let mut contract = EnergyDao::new();
+        contract.init();
+        assert_eq!(contract.check_member(env::current_account_id().to_string()), true);
+    }
+
+    #[test]
+    fn test_delete_all(){
+        let mut contract = EnergyDao::new();
+        contract.init();
+        contract.delete_all();
+        assert_eq!(&members.len(), 0);
+    }
+
+    #[test]
+    fn test_create_proposal(){
+        let mut contract = EnergyDao::new();
+        contract.init();
+        contract.create_proposal("azerty".to_string(),1,".".to_string(),".".to_string(),123,1,1,1);
+        assert!(get_specific_proposal("azerty".to_string()).is_some());
+    }
+
+    #[test]
+    fn test_replace_proposal(){
+        let mut contract = EnergyDao::new();
+        contract.create_proposal("azerty".to_string(),1,".".to_string(),".".to_string(),123,1,1,1);
+        let mut proposal = contract::Proposal{
+            id:"azerty".to_string,
+            proposal_type:0,
+            proposal_name: ".".to_string(),
+            description: ".".to_string(),
+            amount:0,
+            proposal_creator: ".".to_string(),
+            votes_for: 0,
+            votes_against: 0,
+            time_of_creation:0,
+            duration_days:0,
+            duration_hours:0,
+            duration_min:0,
+            list_voters:Vec::new(),
+            votes:Vec::new(),
+        };
+        contract.replace_proposal(proposal);
+        assert_eq!(contract.get_specific_proposal("azerty".to_string()), proposal);
+    }
+
+    #[test]
+    fn test_add_vote(){
+        let mut contract = EnergyDao::new();
+        contract.create_proposal("azerty".to_string(),1,".".to_string(),".".to_string(),123,1,1,1);
+        let proposal = contract.get_specific_proposal("azerty".to_string());
+        contract.vote(&proposal.id, 1);
+        assert_eq!(&proposal.votes.len(), 1);
+    }
+
+    #[test]
+    fn test_add_council(){
+        let mut contract = EnergyDao::new();
+        contract.init();
+        contract.add_council("thamerdridi.testnet".to_string);
+        assert!(contract.check_council("thamerdridi.testnet".to_string());)
+    }
+
+    #[test]
+    fn test_add_community(){
+        let mut contract = EnergyDao::new();
+        contract.init();
+        contract.add_community("thamerdridi.testnet".to_string);
+        assert!(contract.check_member("thamerdridi.testnet".to_string));
+    }
+}
