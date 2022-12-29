@@ -1,6 +1,9 @@
+use std::ops::Div;
+
+use ext_rainbow::RainbowExt;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap};
-use near_sdk::{env, near_bindgen, ext_contract,Gas,log};
+use near_sdk::{env, near_bindgen, ext_contract,Gas,log, PromiseError,Promise, };
 use serde::{Serialize,Deserialize};
 
 pub const TGAS: u64 = 1_000_000_000_000;
@@ -9,6 +12,14 @@ pub const TGAS: u64 = 1_000_000_000_000;
 pub trait Lts {
     fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
 }
+
+//Define Rainbow Bridge contract
+#[ext_contract(ext_rainbow)]
+pub trait Rainbow {
+    fn migrate_to_ethereum (&mut self,eth_recipient:String);
+}
+
+
 
 // VOTE
 // Vote structor 
@@ -414,4 +425,114 @@ impl TreasuryDao {
         .with_attached_deposit(1)
         .ft_transfer(account,(amount*100000000).to_string(),"".to_string());
     }
+
+    #[payable]
+    pub fn process_borrow(&mut self,eth_recipient:String)->Promise{
+        
+        let mut eth_addr=eth_recipient.clone();
+        if(eth_addr.len()==42){
+            eth_addr.remove(0);
+            eth_addr.remove(0);
+        }
+        let rainbow_account= "enear.goerli.testnet".to_string().try_into().unwrap();
+        let promise =ext_rainbow::ext(rainbow_account)
+        .with_static_gas(Gas(2 * TGAS))
+        .with_attached_deposit(12000000000000000000000000)
+        .migrate_to_ethereum(eth_addr);
+        return promise.then( // Create a promise to callback withdraw_callback
+            Self::ext(env::current_account_id())
+            .with_static_gas(Gas(10 * TGAS))
+            .process_callback()
+            )
+
+
+        
+    }
+
+        
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn process_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError> ) {
+            if call_result.is_err() {
+            panic!("There was an error contacting the pool contract");
+            }
+        }
+}
+#[cfg(test)]
+mod tests {
+    use std::{ptr::null, arch::x86_64::_mm_undefined_pd};
+
+    use super::*;
+    //testing init function to initialize the smart contract after deployemnt
+    #[test]
+    fn test_init(){
+        let mut contract = TreasuryDao::new();
+        contract.init();
+        assert_eq!(contract.check_council(env::current_account_id().to_string()), true);
+    }
+    // testing delete all members function 
+    #[test]
+    fn test_delete_all(){
+        let mut contract = TreasuryDao::new();
+        contract.init();
+        contract.delete_all();
+        assert_eq!(contract.check_member(env::current_account_id().to_string()), false);
+
+    }
+
+    //testing create proposal function
+    #[test]
+    fn test_create_proposal(){
+        let mut contract = TreasuryDao::new();
+        contract.init();
+        contract.create_proposal("id".to_string(), 0,"azerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
+        assert_ne!(contract.get_specific_proposal("id".to_string()),null());
+    }
+    
+    //testing replace proposal function
+
+    #[test]
+    fn test_replace_proposal(){
+        let mut contract = TreasuryDao::new();
+        contract.create_proposal("azerty".to_string(), 1,"qwerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
+        let mut proposal = contract::CouncilProposal{
+            id:"azerty".to_string(),
+            proposal_type:0,
+            proposal_name: String::new(),
+            description: String::new(),
+            amount:0,
+            proposal_creator: String::new(),
+            votes_for: 0,
+            votes_against: 0,
+            time_of_creation:0,
+            duration_days:0,
+            duration_hours:0,
+            duration_min:0,
+            list_voters:Vec::new(),
+            votes:Vec::new(),
+            receiver: String::new(),
+
+        };
+        contract.replace_proposal(proposal);
+        assert_eq!(contract.get_specific_proposal("azerty".to_string()), proposal);
+    }
+
+    //testing add vote function
+    #[test]
+    fn test_add_vote(){
+        let mut contract = TreasuryDao::new();
+        contract.init();
+        contract.create_proposal("azerty".to_string(), 1,"qwerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
+        let proposal = contract.get_specific_proposal("azerty".to_string());
+        contract.vote(&proposal.id, 1);
+        assert_eq!(&proposal.votes.len(), 1);
+    }
+    //testing add council function 
+    #[test]
+    fn test_add_council(){
+        let mut contract = TreasuryDao::new();
+        contract.init();
+        contract.add_council("oussema.testnet".to_string);
+        assert!(contract.check_council("oussema.testnet".to_string());)
+    }
+
 }
