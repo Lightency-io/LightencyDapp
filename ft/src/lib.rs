@@ -25,7 +25,10 @@ use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
 use near_sdk::json_types::U128;
-use near_sdk::{env,Gas, log, near_bindgen, AccountId, Balance, PanicOnDefault, PromiseOrValue,ext_contract,Promise,PromiseError};
+use near_sdk::{
+    env, ext_contract, log, near_bindgen, AccountId, Balance, Gas, PanicOnDefault, Promise,
+    PromiseError, PromiseOrValue,
+};
 
 pub const TGAS: u64 = 1_000_000_000_000;
 
@@ -125,32 +128,33 @@ impl Contract {
     }
 
     pub fn mint_token(&mut self, account_id: AccountId, amount: u128) {
-            self.token.internal_deposit(&account_id, amount.into());
-            self.on_tokens_minted(account_id, amount);
+        self.token.internal_deposit(&account_id, amount.into());
+        self.on_tokens_minted(account_id, amount);
     }
 
     pub fn burn_token(&mut self, account_id: AccountId, amount: u128) {
         self.token.internal_withdraw(&account_id, amount.into());
     }
 
-    // stake function 
+    // stake function
     pub fn stake(&self, amount: u128) -> Promise {
         let account_reward = "rewarder_contract.testnet".to_string().try_into().unwrap();
         let p = ext_ft::ext(account_reward)
-        .with_static_gas(Gas(5 * TGAS))
-        .add_staker(env::signer_account_id().to_string(), amount);
+            .with_static_gas(Gas(5 * TGAS))
+            .add_staker(env::signer_account_id().to_string(), amount);
 
-        return p.then( // Create a promise to callback staking_callback
+        return p.then(
+            // Create a promise to callback staking_callback
             Self::ext(env::current_account_id())
-            .with_static_gas(Gas(3 * TGAS))
-            .staking_callback()
-        )
+                .with_static_gas(Gas(3 * TGAS))
+                .staking_callback(),
+        );
     }
     #[private] // Public - but only callable by env::current_account_id()
     pub fn staking_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>) {
         // Check if the promise succeeded
         if call_result.is_err() {
-        panic!("There was an error contacting the rewarder contract");
+            panic!("There was an error contacting the rewarder contract");
         }
     }
 }
@@ -162,5 +166,100 @@ near_contract_standards::impl_fungible_token_storage!(Contract, token, on_accoun
 impl FungibleTokenMetadataProvider for Contract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
         self.metadata.get().unwrap()
+    }
+}
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    //testing internal functions
+    // start
+    #[test]
+    fn test_get_total_supply() {
+        //testing the total supply
+
+        //initiliazing the contract
+        let signer: AccountId = env::signer_account_id();
+        let contract = Contract::new_default_meta(signer, 100);
+
+        //getting the balance of owner == total supply
+        let balance = contract
+            .token
+            .internal_unwrap_balance_of(&env::signer_account_id());
+        //assertion
+        assert_eq!(balance, 100);
+    }
+
+    #[test]
+    fn test_register() {
+        //testing the registration of the account in the contract
+
+        //initiliazing the contract
+        let signer: AccountId = env::signer_account_id();
+        let mut contract = Contract::new_default_meta(signer, 100);
+
+        //setting up the account
+        let issam: AccountId = "issameths.testnet".parse().unwrap();
+
+        //registring the account
+        contract.token.internal_register_account(&issam);
+
+        //getting the balance of issam == 0
+        let balance = contract.token.internal_unwrap_balance_of(&issam);
+
+        //assertion
+        assert_eq!(balance, 0);
+    }
+
+    #[test]
+    fn test_deposit() {
+        //testing the deposit method
+
+        //initiliazing the contract with 100 total supply
+        let signer: AccountId = env::signer_account_id();
+        let mut contract = Contract::new_default_meta(signer, 100);
+
+        //setting up the account Id
+        let issam: AccountId = "issameths.testnet".parse().unwrap();
+
+        //registring the account
+        contract.token.internal_register_account(&issam);
+
+        // depositing tokens into issam
+        contract.token.internal_deposit(&issam, 20);
+
+        //getting balance of issam
+        let balance_issam = contract.token.internal_unwrap_balance_of(&issam);
+
+        //assertion : check if issam does indeed own 20 lts now
+        assert_eq!(balance_issam, 20);
+    }
+
+    #[test]
+    fn test_withdraw() {
+        //testing the withdraw method
+
+        //initiliazing the contract with 100 total supply
+        let signer: AccountId = env::signer_account_id();
+        let mut contract = Contract::new_default_meta(signer, 100);
+
+        //setting up the account Id
+        let issam: AccountId = "issameths.testnet".parse().unwrap();
+
+        //registring the account
+        contract.token.internal_register_account(&issam);
+
+        //depositting tokens into issam
+        contract.token.internal_deposit(&issam, 30);
+
+        //withdrawing(burning) tokens from issam
+        contract.token.internal_withdraw(&issam, 10);
+
+        //getting balance of issam
+        let balance_issam = contract.token.internal_unwrap_balance_of(&issam);
+
+        //assertion
+        assert_eq!(balance_issam, 20);
     }
 }
