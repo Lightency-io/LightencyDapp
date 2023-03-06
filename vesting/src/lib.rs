@@ -12,6 +12,29 @@ pub trait Lighttoken {
     fn storage_deposit (&mut self, account_id: String);
 }
 
+// Schedules
+// Schedule structure
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Serialize, Deserialize,Copy,Default)]
+pub struct Schedule {
+    pub schedule_id:u32,
+    pub amount_of_token:u128,
+    pub initial_unlock:u128,
+    pub duration:u64
+
+}
+// // Schedule implementation
+impl Schedule {
+    pub fn new() -> Self {
+        Self {
+            schedule_id: 0,
+            amount_of_token: 0,
+            initial_unlock: 0,
+            duration: 4,
+        }
+    }
+}
+
 // VESTORS
 // Vestors structure
 #[near_bindgen]
@@ -49,6 +72,7 @@ impl Vestors {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct VestingContract {
     records: Vector<Vestors>,
+    all_schedules: [Schedule; 4] 
 }
 
 // Define the default, which automatically initializes the contract
@@ -74,8 +98,14 @@ impl VestingContract {
     #[init]
     pub fn new() -> Self {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
+        // let all_schedules=[Schedule{ schedule_id: 0, amount_of_token:10000000000, initial_unlock:2500000000, duration: 4 }];
         Self {
             records: Vector::new(b"a"),
+            all_schedules: [Schedule{ schedule_id: 0, amount_of_token:10000000000, initial_unlock:2500000000, duration: 4 },
+            Schedule{ schedule_id: 1, amount_of_token:10000000000, initial_unlock:2500000000, duration: 4 },
+            Schedule{ schedule_id: 2, amount_of_token:10000000000, initial_unlock:2500000000, duration: 4 },
+            Schedule{ schedule_id: 3, amount_of_token:10000000000, initial_unlock:2500000000, duration: 4 },
+            ]
         }
     }
 
@@ -153,21 +183,21 @@ impl VestingContract {
     pub fn add_lockup(
         &mut self,
         id: String,
-        amount_of_token: u128,
+        schedule_id: usize,
     ) {
         let vestor = Vestors {
             id:id,
             owner_id: env::signer_account_id().to_string(),
-            amount_of_token: amount_of_token,
-            locked_amount: 3 * (amount_of_token/4),
-            unlocked_amount: amount_of_token/4,
-            duration: 4,
+            amount_of_token: self.all_schedules[schedule_id].amount_of_token,
+            locked_amount: self.all_schedules[schedule_id].amount_of_token - self.all_schedules[0].initial_unlock,
+            unlocked_amount: self.all_schedules[schedule_id].initial_unlock,
+            duration:self.all_schedules[schedule_id].duration,
             timestamp: env::block_timestamp_ms(),
             nb_time_payment: 1,
         };
         self.records.push(&vestor);
         self.add_storage_deposit();
-        self.mint_lts(amount_of_token/4);
+        self.mint_lts(4);
     }
 
     pub fn refresh (&mut self,v_id: String) {
@@ -265,6 +295,10 @@ impl VestingContract {
             nb_time_payment: current_vestor.nb_time_payment + 1,
         };
         self.replace_vestor(vestor);
+    }
+    pub fn get_all_schedules(&self) -> [Schedule;4]{
+        self.all_schedules
+
     }
 
 }
