@@ -41,27 +41,12 @@ pub trait Rewarder {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
+    contract_owner: AccountId, 
     token: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
 }
 
-const DATA_IMAGE_SVG_NEAR_ICON: &str = "data:image/png;base64,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&zyG2nwYLWXIDt4BrVKdv3zPE/tBB6ZN&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";
-
-fn assert_self() {
-    assert_eq!(
-        env::current_account_id(),
-        env::signer_account_id(),
-        "Can only be called by the token contract"
-    );
-}
-
-fn assert() {
-    if env::signer_account_id().to_string() != env::current_account_id().to_string() {
-        if env::signer_account_id().to_string() != "lightency_contract.testnet".to_string() {
-            panic!("You're not authorised to execute this function");
-        }
-    }
-}
+const DATA_IMAGE_SVG_NEAR_ICON: &str = "data:image/jpeg;base64,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";
 
 #[near_bindgen]
 impl Contract {
@@ -91,10 +76,11 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
         let mut this = Self {
+            contract_owner:owner_id.clone(),
             token: FungibleToken::new(b"a".to_vec()),
             metadata: LazyOption::new(b"m".to_vec(), Some(&metadata)),
         };
-        this.token.internal_register_account(&owner_id);
+        this.token.internal_register_account(&owner_id.clone());
         this.token.internal_deposit(&owner_id, total_supply.into());
         near_contract_standards::fungible_token::events::FtMint {
             owner_id: &owner_id,
@@ -109,7 +95,7 @@ impl Contract {
         log!("Closed @{} with {}", account_id, balance);
     }
 
-    pub fn on_tokens_burned(&mut self, account_id: AccountId, amount: U128) {
+    fn on_tokens_burned(&mut self, account_id: AccountId, amount: U128) {
         near_contract_standards::fungible_token::events::FtBurn {
             owner_id: &account_id,
             amount: &amount,
@@ -118,7 +104,7 @@ impl Contract {
         .emit();
     }
 
-    pub fn on_tokens_minted(&mut self, account_id: AccountId, amount: u128) {
+    fn on_tokens_minted(&mut self, account_id: AccountId, amount: u128) {
         near_contract_standards::fungible_token::events::FtMint {
             owner_id: &account_id,
             amount: &amount.into(),
@@ -126,14 +112,28 @@ impl Contract {
         }
         .emit();
     }
-
+    
+    #[payable]
     pub fn mint_token(&mut self, account_id: AccountId, amount: u128) {
-        self.token.internal_deposit(&account_id, amount.into());
+        assert_eq!(env::predecessor_account_id() , self.contract_owner,"Only the the contract owner can mint LTS tokens");
+        self.storage_deposit(Some(account_id.clone()),Some(true));
+        self.token.internal_deposit(&account_id.clone(), amount.into());
         self.on_tokens_minted(account_id, amount);
     }
 
     pub fn burn_token(&mut self, account_id: AccountId, amount: u128) {
+        assert_eq!(env::predecessor_account_id() , self.contract_owner,"Only the the contract owner can burn LTS tokens");
         self.token.internal_withdraw(&account_id, amount.into());
+        self.on_tokens_burned(account_id, amount.into());
+    }
+
+    pub fn change_contract_owner(&mut self, new_owner:AccountId) {
+        assert!(env::signer_account_id() == self.contract_owner,"You don't have the permission to change the contract_owner");
+        self.contract_owner = new_owner;
+    }
+
+    pub fn get_contract_owner(&self) -> AccountId {
+        self.contract_owner.clone()
     }
 
     // stake function
