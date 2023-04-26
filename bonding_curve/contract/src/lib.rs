@@ -11,12 +11,12 @@ pub const MAX_DECIMALS:f64 = 1000000000000000000.0 ;
 pub trait Lighttoken {
     fn mint_token(&mut self, account_id: AccountId, amount: u128);
     fn burn_token(&mut self, account_id: AccountId, amount: u128);
-    fn storage_deposit (&mut self, account_id: String);
     fn ft_balance_of (&mut self, account_id:String) -> String;
 }
 
 #[ext_contract(ext_stable_coin)]
 pub trait Stablecoin {
+    fn storage_deposit (&mut self, account_id: String,registration_only:bool);
     fn ft_transfer(&mut self,receiver_id:String,amount:String);
 }
 
@@ -55,8 +55,21 @@ impl BondingCurve {
         dict.insert(&"USDT".to_string(), &0);
         dict.insert(&"USDC".to_string(), &0);
         dict.insert(&"USN".to_string(), &0);
+        let mut coin_ref = UnorderedMap::new(b"m");
+        let mut vec1=Vec::<String>::new();
+        vec1.push("usdt.fakes.testnet".to_string());
+        vec1.push(1000000.to_string());
+        coin_ref.insert(&"USDT".to_string(), &vec1);
+        let mut vec2=Vec::<String>::new();
+        vec2.push("usdc.fakes.testnet".to_string());
+        vec2.push(1000000.to_string());
+        coin_ref.insert(&"USDC".to_string(), &vec2);
+        let mut vec3=Vec::<String>::new();
+        vec3.push("usdn.testnet".to_string());
+        vec3.push((1000000000000000000 as u128).to_string());
+        coin_ref.insert(&"USN".to_string(), &vec3);
         Self {
-            owner_id: "treasurydao.testnet".to_string().try_into().unwrap(),
+            owner_id: "newtreasury.testnet".to_string().try_into().unwrap(),
             token_price,
             reserve_balance:dict,
             total_supply: 0,
@@ -64,7 +77,7 @@ impl BondingCurve {
             a,
             b,
             c,
-            coin_ref: UnorderedMap::new(b"m"),
+            coin_ref: coin_ref,
         }
     }
 
@@ -98,8 +111,8 @@ impl BondingCurve {
         let total_supply = self.total_supply;
         let new_supply = total_supply + num_tokens;
         let integral_result = self.integral_curve(new_supply);
-        assert!(self.total_reserve_balance() / MAX_DECIMALS <= integral_result,"price_to_mint, integral_result cannot be lower than reserve_balance");
-        ((self.integral_curve(new_supply) - self.total_reserve_balance() / MAX_DECIMALS) * self.get_coin_decimals(coin_name) ) as u128
+        assert!(self.total_reserve_balance()  <= integral_result,"price_to_mint, integral_result cannot be lower than reserve_balance");
+        ((self.integral_curve(new_supply) - self.total_reserve_balance()) * self.get_coin_decimals(coin_name) ) as u128
     }
 
     //The price (coins) to to receive in exchange for an amount of tokens
@@ -108,15 +121,15 @@ impl BondingCurve {
         assert!(num_tokens <= total_supply,"num tokens cannot be higher than supply");
         let new_supply = total_supply - num_tokens;
         let rewards = self.integral_curve(new_supply);
-        assert!(rewards <= (self.total_reserve_balance() / MAX_DECIMALS),"Amount of tokens to reward cannot be higher than the reserve pool balance");
-        (((self.total_reserve_balance() / MAX_DECIMALS) - rewards) * self.get_coin_decimals(coin_name) ) as u128
+        assert!(rewards <= (self.total_reserve_balance()),"Amount of tokens to reward cannot be higher than the reserve pool balance");
+        (((self.total_reserve_balance()) - rewards) * self.get_coin_decimals(coin_name) ) as u128
     }
 
     pub fn total_reserve_balance(&self) -> f64{
         let coins = self.get_coins();
         let mut total: f64 = 0.0;
         for i in coins {
-            total += (self.reserve_balance.get(&i).unwrap() as f64 / self.get_coin_decimals(i)) * MAX_DECIMALS;
+            total += self.reserve_balance.get(&i).unwrap() as f64 / self.get_coin_decimals(i);
         }
         total
     }
@@ -125,33 +138,12 @@ impl BondingCurve {
 
     //Function to buy tokens from the bonding curve
     pub fn buy_lts (&mut self, num_tokens:u128, coin_name:String) -> Promise{
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-        // Function to add the buyer in the storage of the LTS token
-        let promise=ext_ft::ext(contract_account)
-            .with_attached_deposit(1)
-            .with_static_gas(Gas(3 * TGAS))
-            .storage_deposit(env::signer_account_id().to_string());
-
-            return promise.then( // Create a promise to callback withdraw_callback
-                Self::ext(env::current_account_id())
-                .with_static_gas(Gas(3 * TGAS))
-                .add_storage_callback(num_tokens,coin_name)
-                )
-    }
-
-    #[private] // Public - but only callable by env::current_account_id()
-    pub fn add_storage_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128,coin_name:String ) -> Promise{
-        // Check if the promise succeeded
-        if call_result.is_err() {
-        panic!("There was an error contacting the token contract (Storage deposite function)");
-        }
-
         let price_for_tokens = self.price_to_mint(num_tokens,coin_name.clone());
         let contract_account = "light-token.testnet".to_string().try_into().unwrap();
 
         // Function to mint LTS
         let promise=ext_ft::ext(contract_account)
+            .with_attached_deposit(2350000000000000000000)
             .with_static_gas(Gas(3 * TGAS))
             .mint_token(env::signer_account_id(), num_tokens);
 
@@ -185,7 +177,7 @@ impl BondingCurve {
             .ft_balance_of(env::signer_account_id().to_string());
         return promise.then( // Create a promise to callback withdraw_callback
             Self::ext(env::current_account_id())
-            .with_static_gas(Gas(12 * TGAS))
+            .with_static_gas(Gas(28 * TGAS))
             .ft_balance_callback(num_tokens,reward_to_return,coin_name)
             )
     }
@@ -203,10 +195,15 @@ impl BondingCurve {
         let coin_account:AccountId = self.get_coin_contract(coin_name.clone()).try_into().unwrap();
         // Function to burn LTS
         let promise=ext_ft::ext(lts_account)
-            .with_static_gas(Gas(3 * TGAS))
+            .with_static_gas(Gas(2 * TGAS))
             .burn_token(env::signer_account_id(),num_tokens);
-        return promise.then(ext_stable_coin::ext(coin_account)
+        return promise.then(ext_stable_coin::ext(coin_account.clone())
+        .with_attached_deposit(2350000000000000000000)
         .with_static_gas(Gas(3 * TGAS))
+        .storage_deposit(env::signer_account_id().to_string(),true))
+        .then(ext_stable_coin::ext(coin_account.clone())
+        .with_attached_deposit(1)
+        .with_static_gas(Gas(2 * TGAS))
         .ft_transfer(env::signer_account_id().to_string(),reward_to_return.to_string()))
         .then(Self::ext(env::current_account_id())
         .with_static_gas(Gas(3 * TGAS))
@@ -214,15 +211,42 @@ impl BondingCurve {
     }
 
     #[private] // Public - but only callable by env::current_account_id()
-    pub fn ft_transfer_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, reward_to_return:u128, coin_name:String ) {
-        // Check if the promise succeeded
+    pub fn ft_transfer_callback(&mut self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, reward_to_return:u128, coin_name:String ) -> Promise{
         if call_result.is_err() {
-        panic!("An error occurred during the selling process. Please try again late");
+        let lts_account = "light-token.testnet".to_string().try_into().unwrap();
+        let promise=ext_ft::ext(lts_account)
+            .with_attached_deposit(2350000000000000000000)
+            .with_static_gas(Gas(3 * TGAS))
+            .mint_token(env::signer_account_id(), num_tokens);
+        promise.then(Self::ext(env::current_account_id())
+        .with_static_gas(Gas(3 * TGAS))
+        .panic(num_tokens))
+        }else {
+            Self::ext(env::current_account_id())
+            .with_static_gas(Gas(3 * TGAS))
+            .finish_sell(num_tokens,reward_to_return,coin_name.clone())
         }
+    }
+
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn finish_sell(&mut self,num_tokens:u128, reward_to_return:u128, coin_name:String ) {
         self.total_supply -= num_tokens;
         let new_res_balance = self.reserve_balance.get(&coin_name).unwrap() - reward_to_return;
         self.reserve_balance.insert(&coin_name, &new_res_balance);
         self.token_price = ((self.a/(1.0+(-self.b*(self.total_supply as f64 / 100000000.0)-self.c).exp()))* 1000000.0) as u128 ;
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn panic(&self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128){
+        if call_result.is_err() {
+            let lts_account = "light-token.testnet".to_string().try_into().unwrap();
+            ext_ft::ext(lts_account)
+                .with_attached_deposit(2350000000000000000000)
+                .with_static_gas(Gas(3 * TGAS))
+                .mint_token(env::signer_account_id(), num_tokens);
+        }
+        panic!("Transfer failed and all transactions reverted due to insufficiency of the reserve balance. Try again later"); 
     }
 
     //------------CONTRACT MANAGEMENT FUNCTIONS------------------ 
