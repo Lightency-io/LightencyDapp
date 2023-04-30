@@ -2,7 +2,11 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{ext_contract,AccountId, Promise, PromiseError, log};
 use near_sdk::{env, near_bindgen, Gas};
 use near_sdk::collections::{UnorderedMap, LookupMap};
+use near_sdk::{PromiseOrValue};
+use near_sdk::json_types::U128;
 use std::f64;
+use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
+use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
 
 pub const TGAS: u64 = 1_000_000_000_000;
 pub const MAX_DECIMALS:f64 = 1000000000000000000.0 ;
@@ -16,8 +20,10 @@ pub trait Lighttoken {
 
 #[ext_contract(ext_stable_coin)]
 pub trait Stablecoin {
+    fn ft_balance_of (&mut self, account_id:String) -> String;
     fn storage_deposit (&mut self, account_id: String,registration_only:bool);
     fn ft_transfer(&mut self,receiver_id:String,amount:String);
+    fn ft_metadata(&mut self) -> FungibleTokenMetadata;
 }
 
 // Define the contract structure
@@ -52,14 +58,14 @@ impl BondingCurve {
         c:f64,
     ) -> Self {
         let mut dict = LookupMap::new(b"n");
-        dict.insert(&"USDT".to_string(), &0);
+        dict.insert(&"USDT.e".to_string(), &0);
         dict.insert(&"USDC".to_string(), &0);
         dict.insert(&"USN".to_string(), &0);
         let mut coin_ref = UnorderedMap::new(b"m");
         let mut vec1=Vec::<String>::new();
         vec1.push("usdt.fakes.testnet".to_string());
         vec1.push(1000000.to_string());
-        coin_ref.insert(&"USDT".to_string(), &vec1);
+        coin_ref.insert(&"USDT.e".to_string(), &vec1);
         let mut vec2=Vec::<String>::new();
         vec2.push("usdc.fakes.testnet".to_string());
         vec2.push(1000000.to_string());
@@ -81,38 +87,22 @@ impl BondingCurve {
         }
     }
 
-    //Function to buy tokens from the bonding curve
-    #[payable]
-    pub fn buy(&mut self, num_tokens:u128, coin_name:String) {
-        let price_for_tokens = self.price_to_mint(num_tokens,coin_name.clone());
-        self.total_supply += num_tokens ;
-        let new_res_balance =  self.reserve_balance.get(&coin_name.clone()).unwrap() + price_for_tokens ;
-        self.reserve_balance.insert(&coin_name, &new_res_balance);
-        self.token_price = ((self.a/(1.0+(-self.b*(self.total_supply as f64 / 100000000.0)-self.c).exp()))* 1000000.0) as u128 ;
-        // cross call from lts contract
-    }
-
-    //Burn tokens in exchange for coins
-    pub fn sell(&mut self, num_tokens: u128, coin_name:String) {
-        let reward_to_return = self.reward_for_burn(num_tokens,coin_name.clone());
-        self.total_supply -= num_tokens;
-        let new_res_balance = self.reserve_balance.get(&coin_name.clone()).unwrap() - reward_to_return;
-        self.reserve_balance.insert(&coin_name, &new_res_balance);
-        self.token_price = ((self.a/(1.0+(-self.b*(self.total_supply as f64 / 100000000.0)-self.c).exp()))* 1000000.0) as u128 ;
-    }
-
     fn integral_curve(&self, x: u128) -> f64{
         //integral of y=a/1+exp(-(bx+c)) -> y= a/b * ln(exp(bx+c)+1)
         (self.a/self.b)*(((self.b*(x as f64/100000000.0)+self.c).exp())+1.0).ln() 
     }
 
     //The price (coins) to pay an amount of tokens
-    pub fn price_to_mint(&self, num_tokens:u128, coin_name:String) -> u128{
+    pub fn price_to_mint(&self, num_tokens:u128, coin_name:String) -> f64{
         let total_supply = self.total_supply;
         let new_supply = total_supply + num_tokens;
         let integral_result = self.integral_curve(new_supply);
         assert!(self.total_reserve_balance()  <= integral_result,"price_to_mint, integral_result cannot be lower than reserve_balance");
-        ((self.integral_curve(new_supply) - self.total_reserve_balance()) * self.get_coin_decimals(coin_name) ) as u128
+        let integ_curve = self.integral_curve(new_supply);
+        let tot_res = self.total_reserve_balance();
+        let decimal = self.get_coin_decimals(coin_name);
+        let res = (integ_curve - tot_res) * decimal;
+        res
     }
 
     //The price (coins) to to receive in exchange for an amount of tokens
@@ -125,45 +115,23 @@ impl BondingCurve {
         (((self.total_reserve_balance()) - rewards) * self.get_coin_decimals(coin_name) ) as u128
     }
 
-    pub fn total_reserve_balance(&self) -> f64{
-        let coins = self.get_coins();
-        let mut total: f64 = 0.0;
-        for i in coins {
-            total += self.reserve_balance.get(&i).unwrap() as f64 / self.get_coin_decimals(i);
-        }
-        total
-    }
-
     /****** BACKUP FUNCTIONS ******/
 
-    //Function to buy tokens from the bonding curve
-    pub fn buy_lts (&mut self, num_tokens:u128, coin_name:String) -> Promise{
-        let price_for_tokens = self.price_to_mint(num_tokens,coin_name.clone());
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-        // Function to mint LTS
-        let promise=ext_ft::ext(contract_account)
-            .with_attached_deposit(2350000000000000000000)
-            .with_static_gas(Gas(3 * TGAS))
-            .mint_token(env::signer_account_id(), num_tokens);
-
-        return promise.then( // Create a promise to callback withdraw_callback
-            Self::ext(env::current_account_id())
-            .with_static_gas(Gas(3 * TGAS))
-            .mint_token_callback(num_tokens, price_for_tokens,coin_name.clone())
-            )
-    }
-
     #[private] // Public - but only callable by env::current_account_id()
-    pub fn mint_token_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, price_for_tokens:u128,coin_name:String ) {
+    pub fn mint_token_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, price_for_tokens:u128,coin_name:String,token_in:AccountId) {
         // Check if the promise succeeded
         if call_result.is_err() {
-        panic!("There was an error contacting the token contract (Mint Token function)");
+            ext_stable_coin::ext(token_in)
+                .with_attached_deposit(1)
+                .with_static_gas(Gas(2 * TGAS))
+                .ft_transfer(env::signer_account_id().to_string(),price_for_tokens.to_string());
         }
-        self.total_supply += num_tokens ;
-        let new_res_balance =  self.reserve_balance.get(&coin_name).unwrap() + price_for_tokens ;
-        self.reserve_balance.insert(&coin_name, &new_res_balance);
-        self.token_price = ((self.a/(1.0+(-self.b*(self.total_supply as f64 / 100000000.0)-self.c).exp()))* 1000000.0) as u128 ;
+        else{
+            self.total_supply += num_tokens ;
+            let new_res_balance =  self.reserve_balance.get(&coin_name).unwrap() + price_for_tokens ;
+            self.reserve_balance.insert(&coin_name, &new_res_balance);
+            self.token_price = ((self.a/(1.0+(-self.b*(self.total_supply as f64 / 100000000.0)-self.c).exp()))* 1000000.0) as u128 ;
+        }
     }
 
     //Function to sell tokens to the bonding curve
@@ -220,7 +188,7 @@ impl BondingCurve {
             .mint_token(env::signer_account_id(), num_tokens);
         promise.then(Self::ext(env::current_account_id())
         .with_static_gas(Gas(3 * TGAS))
-        .panic(num_tokens))
+        .panic_sell(num_tokens))
         }else {
             Self::ext(env::current_account_id())
             .with_static_gas(Gas(3 * TGAS))
@@ -238,7 +206,7 @@ impl BondingCurve {
     }
 
     #[private] // Public - but only callable by env::current_account_id()
-    pub fn panic(&self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128){
+    pub fn panic_sell(&self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128){
         if call_result.is_err() {
             let lts_account = "light-token.testnet".to_string().try_into().unwrap();
             ext_ft::ext(lts_account)
@@ -283,6 +251,16 @@ impl BondingCurve {
         self.reserve_balance.get(&coin_name).unwrap() as f64 / self.get_coin_decimals(coin_name)
     }
 
+    //Get the total reserve balance of the bonding curve
+    pub fn total_reserve_balance(&self) -> f64{
+        let coins = self.get_coins();
+        let mut total: f64 = 0.0;
+        for i in coins {
+            total += self.reserve_balance.get(&i).unwrap() as f64 / self.get_coin_decimals(i);
+        }
+        total
+    }
+
     pub fn get_total_supply(&self) -> u128 {
         self.total_supply
     }
@@ -294,6 +272,7 @@ impl BondingCurve {
     pub fn get_coefficients(&self) -> (f64, f64, f64) {
         (self.a, self.b, self.c)
     }
+
     //--------------COINREF_DICTIONARY-----------------
 
     pub fn add_new_coin(&mut self, coin_name:String, coin_contract:String, decimals:u128){
@@ -308,6 +287,15 @@ impl BondingCurve {
         return self.coin_ref.get(&coin_name).unwrap()[0].clone()
     }
 
+    pub fn get_all_coins_contracts(&self) -> Vec<String>{
+        let mut vec = Vec::new();
+        let coins = self.get_coins();
+        for i in coins {
+            vec.push(self.get_coin_contract(i));
+        }
+        vec
+    }
+
     pub fn get_coin_decimals(&self, coin_name:String) -> f64{
         return self.coin_ref.get(&coin_name).unwrap()[1].clone().parse::<f64>().unwrap()
     }
@@ -316,8 +304,71 @@ impl BondingCurve {
         return self.coin_ref.keys_as_vector().to_vec()
     }
 
+    pub fn get_coin_name_from_contract(&self, contract_name:String) -> String {
+        let coins = self.get_coins();
+        let mut res = String::new();
+        for i in coins {
+            if self.get_coin_contract(i.clone()) == contract_name {
+                res = i;
+                break;
+            }
+        }
+        res
+    }
+
     pub fn delete_coin(&mut self, coin_name:String){
         assert!(env::signer_account_id() == self.owner_id,"You don't have the permission to delete a coin.");
         self.coin_ref.remove(&coin_name);
     }
+
+    fn percentage(&self,amount:u128,coin_name:String) -> u128{
+        let decimals = self.get_coin_decimals(coin_name);
+        (((amount as f64) / decimals) * 100000.0) as u128   
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokenReceiver for BondingCurve {
+    /// Callback on receiving tokens by this contract.
+    /// `msg` format is either "" for deposit or `TokenReceiverMessage`.
+    #[allow(unreachable_code)]
+    fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        let token_in = env::predecessor_account_id();
+        let coins = self.get_all_coins_contracts();
+        let mut existance = false;
+        for i in coins {
+            if token_in.to_string() == i {
+                existance = true;
+            }
+        }
+        let coin_name = self.get_coin_name_from_contract(token_in.to_string());
+        assert!(existance,"This token in not supported");
+        let message = msg.get(0..7).unwrap().to_string();
+        let num_tokens=msg.get(8..).unwrap().parse::<u128>().unwrap();
+        assert!(num_tokens > 0,"Invalid number of LTS");
+        let price = self.price_to_mint(num_tokens, coin_name.clone());
+        assert_eq!(self.percentage(price as u128, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
+        if message == "Buy lts".to_string() {
+            // Function to mint LTS
+            let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+
+            ext_ft::ext(contract_account)
+                .with_attached_deposit(2350000000000000000000)
+                .with_static_gas(Gas(3 * TGAS))
+                .mint_token(sender_id.clone(), num_tokens)
+                .then(Self::ext(env::current_account_id())
+                .with_static_gas(Gas(28 * TGAS))
+                .mint_token_callback(num_tokens,amount.0,coin_name,token_in));
+
+            PromiseOrValue::Value(U128(0))
+        } else {
+            panic!("Error calling transfer function");
+        }
+    }
+
 }
