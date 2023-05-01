@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract,AccountId, Promise, PromiseError, log};
+use near_sdk::{ext_contract,AccountId, Promise, PromiseError};
 use near_sdk::{env, near_bindgen, Gas};
 use near_sdk::collections::{UnorderedMap, LookupMap};
 use near_sdk::{PromiseOrValue};
@@ -93,7 +93,7 @@ impl BondingCurve {
     }
 
     //The price (coins) to pay an amount of tokens
-    pub fn price_to_mint(&self, num_tokens:u128, coin_name:String) -> f64{
+    pub fn price_to_mint(&self, num_tokens:u128, coin_name:String) -> u128{
         let total_supply = self.total_supply;
         let new_supply = total_supply + num_tokens;
         let integral_result = self.integral_curve(new_supply);
@@ -102,7 +102,7 @@ impl BondingCurve {
         let tot_res = self.total_reserve_balance();
         let decimal = self.get_coin_decimals(coin_name);
         let res = (integ_curve - tot_res) * decimal;
-        res
+        res as u128
     }
 
     //The price (coins) to to receive in exchange for an amount of tokens
@@ -137,7 +137,7 @@ impl BondingCurve {
     //Function to sell tokens to the bonding curve
     pub fn sell_lts (&mut self,num_tokens:u128,coin_name:String) -> Promise {
         let reward_to_return = self.reward_for_burn(num_tokens,coin_name.clone());
-        assert!(self.reserve_balance.get(&coin_name.clone()).unwrap() > reward_to_return,"The bonding curve dosn't have enough rewards");
+        assert!(self.reserve_balance.get(&coin_name.clone()).unwrap() >= reward_to_return,"The bonding curve dosn't have enough rewards");
         let contract_account = "light-token.testnet".to_string().try_into().unwrap();
         // Function to get LTS balance
         let promise=ext_ft::ext(contract_account)
@@ -156,9 +156,8 @@ impl BondingCurve {
         if call_result.is_err() {
         panic!("There was an error contacting the LTS token contract (Get Balance function)");
         }
-        let balance: String = call_result.unwrap();
-        log!(balance);
-        assert!(balance >= num_tokens.clone().to_string(),"You don't have enough LTS balance");
+        let balance = call_result.unwrap().parse::<u128>().unwrap();
+        assert!(balance >= num_tokens,"You don't have enough LTS balance");
         let lts_account = "light-token.testnet".to_string().try_into().unwrap();
         let coin_account:AccountId = self.get_coin_contract(coin_name.clone()).try_into().unwrap();
         // Function to burn LTS
@@ -261,8 +260,8 @@ impl BondingCurve {
         total
     }
 
-    pub fn get_total_supply(&self) -> u128 {
-        self.total_supply
+    pub fn get_total_supply(&self) -> f64 {
+        self.total_supply as f64 / 100000000.0
     }
 
     pub fn get_price_floor(&self) -> u128 {
@@ -352,7 +351,7 @@ impl FungibleTokenReceiver for BondingCurve {
         let num_tokens=msg.get(8..).unwrap().parse::<u128>().unwrap();
         assert!(num_tokens > 0,"Invalid number of LTS");
         let price = self.price_to_mint(num_tokens, coin_name.clone());
-        assert_eq!(self.percentage(price as u128, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
+        assert_eq!(self.percentage(price, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
         if message == "Buy lts".to_string() {
             // Function to mint LTS
             let contract_account = "light-token.testnet".to_string().try_into().unwrap();
