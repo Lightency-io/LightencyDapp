@@ -1,16 +1,18 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract,AccountId, Promise, PromiseError};
+use near_sdk::{ext_contract,AccountId,Timestamp,Balance, Promise, PromiseError, log};
 use near_sdk::{env, near_bindgen, Gas};
 use near_sdk::collections::{UnorderedMap, LookupMap};
 use near_sdk::{PromiseOrValue};
 use near_sdk::json_types::U128;
-use std::f64;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
+use near_sdk::serde::{Serialize,Deserialize};
+
 
 pub const TGAS: u64 = 1_000_000_000_000;
 pub const MAX_DECIMALS:f64 = 1000000000000000000.0 ;
-
+pub type DurationSec = u32;
+pub type AssetId = String;
 #[ext_contract(ext_ft)]
 pub trait Lighttoken {
     fn mint_token(&mut self, account_id: AccountId, amount: u128);
@@ -24,6 +26,42 @@ pub trait Stablecoin {
     fn storage_deposit (&mut self, account_id: String,registration_only:bool);
     fn ft_transfer(&mut self,receiver_id:String,amount:String);
     fn ft_metadata(&mut self) -> FungibleTokenMetadata;
+}
+
+#[ext_contract(ext_oracle)]
+pub trait Oracle {
+    fn get_price_data(&self, asset_ids: Option<Vec<AssetId>>) -> PriceData;
+}
+
+#[near_bindgen]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PriceData {
+pub timestamp: String,
+pub recency_duration_sec: DurationSec,
+pub prices: Vec<AssetOptionalPrice>,
+}
+impl PriceData {
+    pub fn get_timestamp(self) -> String {
+        self.timestamp
+    }
+
+    pub fn get_prices(self) -> Vec<AssetOptionalPrice>{
+        self.prices
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AssetOptionalPrice {
+pub asset_id: AssetId,
+pub price: Option<Price>,
+}
+
+#[derive(Serialize, Deserialize,Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Price {
+pub multiplier: String,
+pub decimals: u8,
 }
 
 // Define the contract structure
@@ -116,6 +154,30 @@ impl BondingCurve {
     }
 
     /****** BACKUP FUNCTIONS ******/
+
+    pub fn test(&self) -> Promise{
+        let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
+        let asset_ids = Option::Some(vec!["usdc.fakes.testnet".to_string()]);
+            ext_oracle::ext(oracle_account)
+            .with_static_gas(Gas(2 * TGAS))
+            .get_price_data(asset_ids)
+            .then(Self::ext(env::current_account_id())
+            .with_static_gas(Gas(28 * TGAS))
+            .oracle_callback())
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn oracle_callback(&mut self,#[callback_result] call_result: Result<PriceData, PromiseError>) {
+        if call_result.is_err() {
+            panic!("error");
+            }
+            let balance = call_result.unwrap();
+            let res = balance.get_prices();
+            for i in res {
+                let aff = i.price.unwrap().multiplier;
+                log!(aff);
+            }
+    }
 
     #[private] // Public - but only callable by env::current_account_id()
     pub fn mint_token_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, price_for_tokens:u128,coin_name:String,token_in:AccountId) {
@@ -345,29 +407,39 @@ impl FungibleTokenReceiver for BondingCurve {
                 existance = true;
             }
         }
-        let coin_name = self.get_coin_name_from_contract(token_in.to_string());
         assert!(existance,"This token in not supported");
+        let coin_name = self.get_coin_name_from_contract(token_in.to_string());
         let message = msg.get(0..7).unwrap().to_string();
         let num_tokens=msg.get(8..).unwrap().parse::<u128>().unwrap();
         assert!(num_tokens > 0,"Invalid number of LTS");
         let price = self.price_to_mint(num_tokens, coin_name.clone());
-        assert_eq!(self.percentage(price, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
-        if message == "Buy lts".to_string() {
-            // Function to mint LTS
-            let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+        let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
+        let asset_ids = Option::None;
+            ext_oracle::ext(oracle_account)
+            .with_static_gas(Gas(2 * TGAS))
+            .get_price_data(asset_ids);
+            // .then(Self::ext(env::current_account_id())
+            // .with_static_gas(Gas(28 * TGAS))
+            // .oracle_callback(num_tokens,amount.0,coin_name,token_in,price));
 
-            ext_ft::ext(contract_account)
-                .with_attached_deposit(2350000000000000000000)
-                .with_static_gas(Gas(3 * TGAS))
-                .mint_token(sender_id.clone(), num_tokens)
-                .then(Self::ext(env::current_account_id())
-                .with_static_gas(Gas(28 * TGAS))
-                .mint_token_callback(num_tokens,amount.0,coin_name,token_in));
+        //assert_eq!(self.percentage(price, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
+        // if message == "Buy lts".to_string() {
+        //     // Function to mint LTS
+        //     let contract_account = "light-token.testnet".to_string().try_into().unwrap();
 
-            PromiseOrValue::Value(U128(0))
-        } else {
-            panic!("Error calling transfer function");
-        }
+        //     ext_ft::ext(contract_account)
+        //         .with_attached_deposit(2350000000000000000000)
+        //         .with_static_gas(Gas(3 * TGAS))
+        //         .mint_token(sender_id.clone(), num_tokens)
+        //         .then(Self::ext(env::current_account_id())
+        //         .with_static_gas(Gas(28 * TGAS))
+        //         .mint_token_callback(num_tokens,amount.0,coin_name,token_in));
+
+        //     PromiseOrValue::Value(U128(0))
+        // } else {
+        //     panic!("Error calling transfer function");
+        PromiseOrValue::Value(U128(0))
+        // }
     }
 
 }
