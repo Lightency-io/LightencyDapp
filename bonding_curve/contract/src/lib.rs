@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract,AccountId,Timestamp,Balance, Promise, PromiseError, log};
+use near_sdk::{ext_contract,AccountId, Promise, PromiseError};
 use near_sdk::{env, near_bindgen, Gas};
 use near_sdk::collections::{UnorderedMap, LookupMap};
 use near_sdk::{PromiseOrValue};
@@ -13,6 +13,7 @@ pub const TGAS: u64 = 1_000_000_000_000;
 pub const MAX_DECIMALS:f64 = 1000000000000000000.0 ;
 pub type DurationSec = u32;
 pub type AssetId = String;
+
 #[ext_contract(ext_ft)]
 pub trait Lighttoken {
     fn mint_token(&mut self, account_id: AccountId, amount: u128);
@@ -34,7 +35,7 @@ pub trait Oracle {
 }
 
 #[near_bindgen]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Clone)]
 pub struct PriceData {
 pub timestamp: String,
 pub recency_duration_sec: DurationSec,
@@ -50,14 +51,14 @@ impl PriceData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AssetOptionalPrice {
 pub asset_id: AssetId,
 pub price: Option<Price>,
 }
 
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize,Debug,Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Price {
 pub multiplier: String,
@@ -99,19 +100,46 @@ impl BondingCurve {
         dict.insert(&"USDT.e".to_string(), &0);
         dict.insert(&"USDC".to_string(), &0);
         dict.insert(&"USN".to_string(), &0);
+        dict.insert(&"DAI".to_string(), &0);
+        dict.insert(&"BTC".to_string(), &0);
+        dict.insert(&"ETH".to_string(), &0);
         let mut coin_ref = UnorderedMap::new(b"m");
         let mut vec1=Vec::<String>::new();
         vec1.push("usdt.fakes.testnet".to_string());
         vec1.push(1000000.to_string());
+        vec1.push(true.to_string());
+        vec1.push("usdt.fakes.testnet".to_string());
         coin_ref.insert(&"USDT.e".to_string(), &vec1);
         let mut vec2=Vec::<String>::new();
         vec2.push("usdc.fakes.testnet".to_string());
         vec2.push(1000000.to_string());
+        vec2.push(true.to_string());
+        vec2.push("usdc.fakes.testnet".to_string());
         coin_ref.insert(&"USDC".to_string(), &vec2);
         let mut vec3=Vec::<String>::new();
         vec3.push("usdn.testnet".to_string());
         vec3.push((1000000000000000000 as u128).to_string());
+        vec3.push(true.to_string());
+        vec3.push("usdn.testnet".to_string());
         coin_ref.insert(&"USN".to_string(), &vec3);
+        let mut vec4=Vec::<String>::new();
+        vec4.push("dai.fakes.testnet".to_string());
+        vec4.push((1000000000000000000 as u128).to_string());
+        vec4.push(true.to_string());
+        vec4.push("dai.fakes.testnet".to_string());
+        coin_ref.insert(&"DAI".to_string(), &vec4);
+        let mut vec5=Vec::<String>::new();
+        vec5.push("wbtc.fakes.testnet".to_string());
+        vec5.push((100000000 as u128).to_string());
+        vec5.push(false.to_string());
+        vec5.push("wbtc.fakes.testnet".to_string());
+        coin_ref.insert(&"BTC".to_string(), &vec5);
+        let mut vec6=Vec::<String>::new();
+        vec6.push("weth.fakes.testnet".to_string());
+        vec6.push((1000000000000000000 as u128).to_string());
+        vec6.push(false.to_string());
+        vec6.push("weth.fakes.testnet".to_string());
+        coin_ref.insert(&"ETH".to_string(), &vec6);
         Self {
             owner_id: "newtreasury.testnet".to_string().try_into().unwrap(),
             token_price,
@@ -130,53 +158,54 @@ impl BondingCurve {
         (self.a/self.b)*(((self.b*(x as f64/100000000.0)+self.c).exp())+1.0).ln() 
     }
 
-    //The price (coins) to pay an amount of tokens
-    pub fn price_to_mint(&self, num_tokens:u128, coin_name:String) -> u128{
+    pub fn price_to_mint(&self, num_tokens:u128, coin_price:String, coin_decimals:u8) -> u128{
         let total_supply = self.total_supply;
+        let left_boundary = self.integral_curve(self.total_supply);
         let new_supply = total_supply + num_tokens;
-        let integral_result = self.integral_curve(new_supply);
-        assert!(self.total_reserve_balance()  <= integral_result,"price_to_mint, integral_result cannot be lower than reserve_balance");
-        let integ_curve = self.integral_curve(new_supply);
-        let tot_res = self.total_reserve_balance();
-        let decimal = self.get_coin_decimals(coin_name);
-        let res = (integ_curve - tot_res) * decimal;
+        let right_boundary = self.integral_curve(new_supply);
+        assert!(left_boundary <= right_boundary,"price_to_mint, new price cannot be lower than old price when buying");
+        let res = ((right_boundary - left_boundary) / (coin_price.parse::<f64>().unwrap())) * ((10.0 as f64).powf(coin_decimals as f64));
         res as u128
     }
-
+        
     //The price (coins) to to receive in exchange for an amount of tokens
-    pub fn reward_for_burn(&mut self, num_tokens: u128, coin_name:String) -> u128 {
+    pub fn reward_for_burn(&mut self, num_tokens: u128, coin_price: String, coin_decimals:u8) -> u128 {
         let total_supply = self.total_supply;
         assert!(num_tokens <= total_supply,"num tokens cannot be higher than supply");
+        let right_boundary= self.integral_curve(total_supply);
         let new_supply = total_supply - num_tokens;
-        let rewards = self.integral_curve(new_supply);
-        assert!(rewards <= (self.total_reserve_balance()),"Amount of tokens to reward cannot be higher than the reserve pool balance");
-        (((self.total_reserve_balance()) - rewards) * self.get_coin_decimals(coin_name) ) as u128
+        let left_boundary = self.integral_curve(new_supply);
+        assert!(left_boundary <= right_boundary,"Amount of tokens to reward cannot be higher than the reserve pool balance");
+        let res = ((right_boundary - left_boundary) / (coin_price.parse::<f64>().unwrap())) * ((10.0 as f64).powf(coin_decimals as f64));
+        res as u128
     }
 
     /****** BACKUP FUNCTIONS ******/
 
-    pub fn test(&self) -> Promise{
-        let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
-        let asset_ids = Option::Some(vec!["usdc.fakes.testnet".to_string()]);
-            ext_oracle::ext(oracle_account)
-            .with_static_gas(Gas(2 * TGAS))
-            .get_price_data(asset_ids)
-            .then(Self::ext(env::current_account_id())
-            .with_static_gas(Gas(28 * TGAS))
-            .oracle_callback())
-    }
-
     #[private] // Public - but only callable by env::current_account_id()
-    pub fn oracle_callback(&mut self,#[callback_result] call_result: Result<PriceData, PromiseError>) {
+    pub fn oracle_callback_for_buy(&mut self,#[callback_result] call_result: Result<PriceData, PromiseError>,num_tokens:u128, coin_name:String,token_in:AccountId,sender_id:AccountId,amount:U128) {
         if call_result.is_err() {
-            panic!("error");
+            ext_stable_coin::ext(token_in)
+                .with_attached_deposit(1)
+                .with_static_gas(Gas(2 * TGAS))
+                .ft_transfer(env::signer_account_id().to_string(),amount.0.to_string());
+        }else {
+            let price_data = call_result.unwrap().get_prices();
+            for i in price_data {
+                let token_price = i.price.clone().unwrap().multiplier;
+                let token_decimals = i.price.clone().unwrap().decimals;
+                let price_to_mint = self.price_to_mint(num_tokens, token_price,token_decimals);
+                assert_eq!(self.percentage(price_to_mint, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
             }
-            let balance = call_result.unwrap();
-            let res = balance.get_prices();
-            for i in res {
-                let aff = i.price.unwrap().multiplier;
-                log!(aff);
-            }
+            let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+            ext_ft::ext(contract_account)
+                .with_attached_deposit(2350000000000000000000)
+                .with_static_gas(Gas(3 * TGAS))
+                .mint_token(sender_id.clone(), num_tokens)
+                .then(Self::ext(env::current_account_id())
+                .with_static_gas(Gas(28 * TGAS))
+                .mint_token_callback(num_tokens,amount.0,coin_name,token_in));
+        }
     }
 
     #[private] // Public - but only callable by env::current_account_id()
@@ -198,18 +227,40 @@ impl BondingCurve {
 
     //Function to sell tokens to the bonding curve
     pub fn sell_lts (&mut self,num_tokens:u128,coin_name:String) -> Promise {
-        let reward_to_return = self.reward_for_burn(num_tokens,coin_name.clone());
-        assert!(self.reserve_balance.get(&coin_name.clone()).unwrap() >= reward_to_return,"The bonding curve dosn't have enough rewards");
-        let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-        // Function to get LTS balance
-        let promise=ext_ft::ext(contract_account)
-            .with_static_gas(Gas(2 * TGAS))
-            .ft_balance_of(env::signer_account_id().to_string());
-        return promise.then( // Create a promise to callback withdraw_callback
-            Self::ext(env::current_account_id())
-            .with_static_gas(Gas(28 * TGAS))
-            .ft_balance_callback(num_tokens,reward_to_return,coin_name)
-            )
+        assert!(self.check_stable_coin(coin_name.clone()),"Transaction not allowed, Please select a stable coin");
+        let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
+            let asset_ids = Option::Some(vec![self.get_asset_id(coin_name.clone())]);
+            ext_oracle::ext(oracle_account)
+                .with_static_gas(Gas(2 * TGAS))
+                .get_price_data(asset_ids)
+                .then(Self::ext(env::current_account_id())
+                .with_static_gas(Gas(28 * TGAS))
+                .oracle_callback_for_sell(num_tokens,coin_name))
+    }
+
+    #[private] // Public - but only callable by env::current_account_id()
+    pub fn oracle_callback_for_sell(&mut self,#[callback_result] call_result: Result<PriceData, PromiseError>,num_tokens:u128, coin_name:String) {
+        if call_result.is_err() {
+            panic!("Can not fetch from oracle");
+        }else {
+            let price_data = call_result.unwrap().get_prices();
+            for i in price_data {
+                let token_price = i.price.clone().unwrap().multiplier;
+                let token_decimals = i.price.clone().unwrap().decimals;
+                let reward_to_return = self.reward_for_burn(num_tokens, token_price, token_decimals);
+                assert!(self.reserve_balance.get(&coin_name.clone()).unwrap() >= reward_to_return,"The bonding curve dosn't have enough rewards");
+                let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+                // Function to get LTS balance
+                ext_ft::ext(contract_account)
+                    .with_static_gas(Gas(2 * TGAS))
+                    .ft_balance_of(env::signer_account_id().to_string())
+                    .then( // Create a promise to callback withdraw_callback
+                    Self::ext(env::current_account_id())
+                    .with_static_gas(Gas(28 * TGAS))
+                    .ft_balance_callback(num_tokens,reward_to_return,coin_name.clone())
+                    );
+            }
+        }
     }
 
     #[private] // Public - but only callable by env::current_account_id()
@@ -336,16 +387,23 @@ impl BondingCurve {
 
     //--------------COINREF_DICTIONARY-----------------
 
-    pub fn add_new_coin(&mut self, coin_name:String, coin_contract:String, decimals:u128){
+    pub fn add_new_coin(&mut self, coin_name:String, coin_contract:String, decimals:u128, stable:bool,asset_id:String){
         assert!(env::signer_account_id() == self.owner_id,"You don't have the permission to add a new coin.");
         let mut vec=Vec::<String>::new();
         vec.push(coin_contract);
         vec.push(decimals.to_string());
+        vec.push(stable.to_string());
+        vec.push(asset_id);
         self.coin_ref.insert(&coin_name, &vec);
+        self.reserve_balance.insert(&coin_name, &0);
     }
 
     pub fn get_coin_contract(&self, coin_name:String) -> String{
         return self.coin_ref.get(&coin_name).unwrap()[0].clone()
+    }
+
+    pub fn get_asset_id(&self, coin_name:String) -> String{
+        return self.coin_ref.get(&coin_name).unwrap()[3].clone()
     }
 
     pub fn get_all_coins_contracts(&self) -> Vec<String>{
@@ -358,7 +416,34 @@ impl BondingCurve {
     }
 
     pub fn get_coin_decimals(&self, coin_name:String) -> f64{
-        return self.coin_ref.get(&coin_name).unwrap()[1].clone().parse::<f64>().unwrap()
+        let decimal = self.coin_ref.get(&coin_name).unwrap()[1].clone().parse::<u32>().unwrap();
+        ((10 as u128).pow(decimal)) as f64
+    }
+
+    pub fn get_stable_coins(&self) -> Vec<String> {
+        let coins = self.get_coins();
+        let mut res = Vec::new();
+        for i in coins {
+            if self.coin_ref.get(&i).unwrap()[2] == "ture".to_string() {
+                res.push(i);
+            }  
+        }
+        res
+    }
+
+    pub fn check_stable_coin(&self,coin_name:String) -> bool{
+        let mut res = false;
+        for i in self.get_stable_coins() {
+            if i == coin_name {
+                res = true;
+                break;
+            }
+        }
+        res
+    }
+
+    pub fn get_decimals (&self, coin_name:String) -> u32 {
+        self.coin_ref.get(&coin_name).unwrap()[1].clone().parse::<u32>().unwrap()
     }
 
     pub fn get_coins(&self) -> Vec<String>{
@@ -409,37 +494,22 @@ impl FungibleTokenReceiver for BondingCurve {
         }
         assert!(existance,"This token in not supported");
         let coin_name = self.get_coin_name_from_contract(token_in.to_string());
-        let message = msg.get(0..7).unwrap().to_string();
         let num_tokens=msg.get(8..).unwrap().parse::<u128>().unwrap();
         assert!(num_tokens > 0,"Invalid number of LTS");
-        let price = self.price_to_mint(num_tokens, coin_name.clone());
-        let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
-        let asset_ids = Option::None;
+        let message = msg.get(0..7).unwrap().to_string();
+        if message == "Buy lts".to_string() {
+            let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
+            let asset_ids = Option::Some(vec![self.get_asset_id(coin_name.clone())]);
             ext_oracle::ext(oracle_account)
-            .with_static_gas(Gas(2 * TGAS))
-            .get_price_data(asset_ids);
-            // .then(Self::ext(env::current_account_id())
-            // .with_static_gas(Gas(28 * TGAS))
-            // .oracle_callback(num_tokens,amount.0,coin_name,token_in,price));
-
-        //assert_eq!(self.percentage(price, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
-        // if message == "Buy lts".to_string() {
-        //     // Function to mint LTS
-        //     let contract_account = "light-token.testnet".to_string().try_into().unwrap();
-
-        //     ext_ft::ext(contract_account)
-        //         .with_attached_deposit(2350000000000000000000)
-        //         .with_static_gas(Gas(3 * TGAS))
-        //         .mint_token(sender_id.clone(), num_tokens)
-        //         .then(Self::ext(env::current_account_id())
-        //         .with_static_gas(Gas(28 * TGAS))
-        //         .mint_token_callback(num_tokens,amount.0,coin_name,token_in));
-
-        //     PromiseOrValue::Value(U128(0))
-        // } else {
-        //     panic!("Error calling transfer function");
-        PromiseOrValue::Value(U128(0))
-        // }
+                .with_static_gas(Gas(2 * TGAS))
+                .get_price_data(asset_ids)
+                .then(Self::ext(env::current_account_id())
+                .with_static_gas(Gas(28 * TGAS))
+                .oracle_callback_for_buy(num_tokens,coin_name,token_in,sender_id,amount));
+            PromiseOrValue::Value(U128(0))
+        }else {
+            panic!("Error calling transfer function");
+        }
     }
 
 }
