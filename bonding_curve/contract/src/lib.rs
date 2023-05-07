@@ -197,7 +197,7 @@ impl BondingCurve {
                 let price_to_mint = self.price_to_mint(num_tokens, token_price,token_decimals);
                 assert_eq!(self.percentage(price_to_mint, coin_name.clone()),self.percentage(amount.0, coin_name.clone()),"Amount transferred doesn't cover the price for the tokens");
             }
-            let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+            let contract_account = "aziz12.testnet".to_string().try_into().unwrap();
             ext_ft::ext(contract_account)
                 .with_attached_deposit(2350000000000000000000)
                 .with_static_gas(Gas(3 * TGAS))
@@ -249,7 +249,7 @@ impl BondingCurve {
                 let token_decimals = i.price.clone().unwrap().decimals;
                 let reward_to_return = self.reward_for_burn(num_tokens, token_price, token_decimals);
                 assert!(self.reserve_balance.get(&coin_name.clone()).unwrap() >= reward_to_return,"The bonding curve dosn't have enough rewards");
-                let contract_account = "light-token.testnet".to_string().try_into().unwrap();
+                let contract_account = "aziz12.testnet".to_string().try_into().unwrap();
                 // Function to get LTS balance
                 ext_ft::ext(contract_account)
                     .with_static_gas(Gas(2 * TGAS))
@@ -271,7 +271,7 @@ impl BondingCurve {
         }
         let balance = call_result.unwrap().parse::<u128>().unwrap();
         assert!(balance >= num_tokens,"You don't have enough LTS balance");
-        let lts_account = "light-token.testnet".to_string().try_into().unwrap();
+        let lts_account = "aziz12.testnet".to_string().try_into().unwrap();
         let coin_account:AccountId = self.get_coin_contract(coin_name.clone()).try_into().unwrap();
         // Function to burn LTS
         let promise=ext_ft::ext(lts_account)
@@ -293,7 +293,7 @@ impl BondingCurve {
     #[private] // Public - but only callable by env::current_account_id()
     pub fn ft_transfer_callback(&mut self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128, reward_to_return:u128, coin_name:String ) -> Promise{
         if call_result.is_err() {
-        let lts_account = "light-token.testnet".to_string().try_into().unwrap();
+        let lts_account = "aziz12.testnet".to_string().try_into().unwrap();
         let promise=ext_ft::ext(lts_account)
             .with_attached_deposit(2350000000000000000000)
             .with_static_gas(Gas(3 * TGAS))
@@ -320,7 +320,7 @@ impl BondingCurve {
     #[private] // Public - but only callable by env::current_account_id()
     pub fn panic_sell(&self,#[callback_result] call_result: Result<(), PromiseError>,num_tokens:u128){
         if call_result.is_err() {
-            let lts_account = "light-token.testnet".to_string().try_into().unwrap();
+            let lts_account = "aziz12.testnet".to_string().try_into().unwrap();
             ext_ft::ext(lts_account)
                 .with_attached_deposit(2350000000000000000000)
                 .with_static_gas(Gas(3 * TGAS))
