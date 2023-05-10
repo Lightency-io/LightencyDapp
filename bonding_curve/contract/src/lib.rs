@@ -416,7 +416,7 @@ impl BondingCurve {
 
     pub fn get_coin_decimals(&self, coin_name:String) -> f64{
         let decimal = self.coin_ref.get(&coin_name).unwrap()[1].clone().parse::<u32>().unwrap();
-        ((10 as u128).pow(decimal)) as f64
+        decimal as f64
     }
 
     pub fn get_stable_coins(&self) -> Vec<String> {
