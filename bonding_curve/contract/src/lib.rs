@@ -169,7 +169,7 @@ impl BondingCurve {
     }
         
     //The price (coins) to to receive in exchange for an amount of tokens
-    pub fn reward_for_burn(&mut self, num_tokens: u128, coin_price: String, coin_decimals:u8) -> u128 {
+    pub fn reward_for_burn(&self, num_tokens: u128, coin_price: String, coin_decimals:u8) -> u128 {
         let total_supply = self.total_supply;
         assert!(num_tokens <= total_supply,"num tokens cannot be higher than supply");
         let right_boundary= self.integral_curve(total_supply);
@@ -231,7 +231,6 @@ impl BondingCurve {
         let oracle_account = "priceoracle.testnet".to_string().try_into().unwrap();
             let asset_ids = Option::Some(vec![self.get_asset_id(coin_name.clone())]);
             ext_oracle::ext(oracle_account)
-                .with_static_gas(Gas(2 * TGAS))
                 .get_price_data(asset_ids)
                 .then(Self::ext(env::current_account_id())
                 .with_static_gas(Gas(28 * TGAS))
@@ -424,7 +423,7 @@ impl BondingCurve {
         let coins = self.get_coins();
         let mut res = Vec::new();
         for i in coins {
-            if self.coin_ref.get(&i).unwrap()[2] == "ture".to_string() {
+            if self.coin_ref.get(&i).unwrap()[2] == "true".to_string() {
                 res.push(i);
             }  
         }
