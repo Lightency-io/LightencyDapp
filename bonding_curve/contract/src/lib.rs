@@ -27,6 +27,7 @@ pub trait Stablecoin {
     fn storage_deposit (&mut self, account_id: String,registration_only:bool);
     fn ft_transfer(&mut self,receiver_id:String,amount:String);
     fn ft_metadata(&mut self) -> FungibleTokenMetadata;
+    fn near_deposit(&mut self);
 }
 
 #[ext_contract(ext_oracle)]
@@ -103,6 +104,7 @@ impl BondingCurve {
         dict.insert(&"DAI".to_string(), &0);
         dict.insert(&"BTC".to_string(), &0);
         dict.insert(&"ETH".to_string(), &0);
+        dict.insert(&"NEAR".to_string(), &0);
         let mut coin_ref = UnorderedMap::new(b"m");
         let mut vec1=Vec::<String>::new();
         vec1.push("usdt.fakes.testnet".to_string());
@@ -140,6 +142,12 @@ impl BondingCurve {
         vec6.push(false.to_string());
         vec6.push("weth.fakes.testnet".to_string());
         coin_ref.insert(&"ETH".to_string(), &vec6);
+        let mut vec7=Vec::<String>::new();
+        vec7.push("wrap.testnet".to_string());
+        vec7.push((1000000000000000000000000 as u128).to_string());
+        vec7.push(false.to_string());
+        vec7.push("wrap.testnet".to_string());
+        coin_ref.insert(&"NEAR".to_string(), &vec7);
         Self {
             owner_id: "newtreasury.testnet".to_string().try_into().unwrap(),
             token_price,
