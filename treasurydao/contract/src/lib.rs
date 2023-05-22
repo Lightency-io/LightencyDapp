@@ -1,538 +1,330 @@
-use std::ops::Div;
+use std::collections::HashSet;
 
-use ext_rainbow::RainbowExt;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{UnorderedMap};
-use near_sdk::{env, near_bindgen, ext_contract,Gas,log, PromiseError,Promise, };
-use serde::{Serialize,Deserialize};
+use near_sdk::collections::{LazyOption, LookupMap};
+use near_sdk::json_types::{Base58CryptoHash, U128};
+use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{
+    env, ext_contract, near_bindgen, AccountId, Balance, BorshStorageKey, CryptoHash,
+    PanicOnDefault, Promise, PromiseResult,
+};
 
-pub const TGAS: u64 = 1_000_000_000_000;
+pub use crate::policy::{
+    default_policy, Policy, RoleKind, RolePermission, VersionedPolicy, VotePolicy,
+};
+use crate::proposals::VersionedProposal;
+pub use crate::proposals::{Proposal, ProposalInput, ProposalKind, ProposalStatus};
+pub use crate::types::{Action, Config, OldAccountId, OLD_BASE_TOKEN};
+use crate::upgrade::{internal_get_factory_info, internal_set_factory_info, FactoryInfo};
+pub use crate::views::{ProposalOutput};
 
-#[ext_contract(ext_lts)]
-pub trait Lts {
-    fn ft_transfer (&mut self, receiver_id:String, amount:String, memo:String);
+
+mod policy;
+mod proposals;
+mod types;
+mod upgrade;
+pub mod views;
+
+#[derive(BorshStorageKey, BorshSerialize)]
+pub enum StorageKeys {
+    Config,
+    Policy,
+    Proposals,
+    Blobs,
 }
 
-//Define Rainbow Bridge contract
-#[ext_contract(ext_rainbow)]
-pub trait Rainbow {
-    fn migrate_to_ethereum (&mut self,eth_recipient:String);
+/// After payouts, allows a callback
+#[ext_contract(ext_self)]
+pub trait ExtSelf {
+    /// Callback after proposal execution.
+    fn on_proposal_callback(&mut self, proposal_id: u64) -> PromiseOrValue<()>;
 }
 
-
-
-// VOTE
-// Vote structor 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Serialize, Deserialize)]
- pub struct Vote{
-    pub address: String,
-    pub vote:u8,
-    pub time_of_vote:u64,
- }
-
-  // Vote implementation 
-  impl Vote {
-    // Initialise a new vote
-    pub fn new() -> Self{
-        Self {
-            address: String::new(),
-            vote:0,
-            time_of_vote:0,
-        }
-    }
- }
-
- // Council Proposal
-// Proposal structor
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Serialize, Deserialize)]
-pub struct CouncilProposal{
-    pub id:String,
-    pub proposal_type: u8,
-    pub proposal_name: String,
-    pub description: String,
-    pub amount: u128,
-    pub proposal_creator: String,
-    pub votes_for: u32,
-    pub votes_against: u32,
-    pub time_of_creation:u64,
-    pub duration_days:u64,
-    pub duration_hours:u64,
-    pub duration_min:u64,
-    pub list_voters:Vec<String>,
-    pub votes:Vec<Vote>,
-    pub receiver:String
-}
-
-impl CouncilProposal{
-    pub fn new() -> Self{
-        Self{
-            id:"".to_string(),
-            proposal_type:0,
-            proposal_name: String::new(),
-            description: String::new(),
-            amount:0,
-            proposal_creator: String::new(),
-            votes_for: 0,
-            votes_against: 0,
-            time_of_creation:0,
-            duration_days:0,
-            duration_hours:0,
-            duration_min:0,
-            list_voters:Vec::new(),
-            votes:Vec::new(),
-            receiver: String::new(),
-        }
-    }
-
-    // Create a new vote 
-    // Returns a propsal contains the new vote 
-    pub fn create_vote(&mut self, vote:u8) -> Self{
-        for i in self.list_voters.clone(){
-            assert!(
-                env::signer_account_id().to_string() != i,
-                "You already voted"
-            );
-        }
-        let v = Vote{
-            address: env::signer_account_id().to_string(),
-            vote:vote,
-            time_of_vote:env::block_timestamp(),
-        };
-        self.votes.push(v);
-        if vote==0 {
-            self.votes_against=self.votes_against+1;
-        }else{
-            self.votes_for=self.votes_for+1;
-        }
-        self.list_voters.push(env::signer_account_id().to_string());
-        Self { 
-            id:self.id.clone(),
-            proposal_type:self.proposal_type,
-            proposal_name: self.proposal_name.clone(), 
-            description: self.description.clone(),
-            amount: self.amount,
-            proposal_creator: self.proposal_creator.clone(),
-            votes_for: self.votes_for, 
-            votes_against: self.votes_against, 
-            time_of_creation: self.time_of_creation, 
-            duration_days: self.duration_days, 
-            duration_hours: self.duration_hours, 
-            duration_min: self.duration_min, 
-            list_voters: self.list_voters.clone(),
-            votes: self.votes.clone(),
-            receiver: self.receiver.clone()
-        }
-    }
-
-    // Get the end time of a proposal 
-    pub fn end_time(&self) -> u64 {
-        log!("{}",self.time_of_creation+(self.duration_days*86400000000000+self.duration_hours*3600000000000+self.duration_min*60000000000));
-        self.time_of_creation+(self.duration_days*86400000000000+self.duration_hours*3600000000000+self.duration_min*60000000000)
-    }
-
-    // Check if the time of a proposal is end or not 
-    pub fn check_proposal(&self)->bool{
-        if (env::block_timestamp() > self.end_time()) && (self.votes_for > self.votes_against){
-            return true;
-        }
-        return false;
-    } 
-
-}
-
-// Define the contract structure
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct TreasuryDao {
-    stakers: Vec<String>,
-    members: UnorderedMap<String,u8>,
-    proposals: Vec<CouncilProposal>,
+#[derive(BorshSerialize, BorshDeserialize, PanicOnDefault)]
+pub struct Contract {
+    /// DAO configuration.
+    pub config: LazyOption<Config>,
+    /// Voting and permissions policy.
+    pub policy: LazyOption<VersionedPolicy>,
+    /// List of stakers 
+    pub stakers: HashSet<AccountId>,
+    /// Amount of $NEAR locked for bonds.
+    pub locked_amount: Balance,
+    /// Last available id for the proposals.
+    pub last_proposal_id: u64,
+    /// Proposal map from ID to proposal information.
+    pub proposals: LookupMap<u64, VersionedProposal>,
+    /// Large blob storage.
+    pub blobs: LookupMap<CryptoHash, AccountId>,
 }
 
-// Define the default, which automatically initializes the contract
-impl Default for TreasuryDao {
-    fn default() -> Self {
-        panic!("Contract is not initialized yet")
-    }
-}
-
-// Make sure that the caller of the function is the owner
-fn assert_self() {
-    assert_eq!(
-        env::current_account_id(),
-        env::predecessor_account_id(),
-        "Can only be called by owner"
-    );
-}
-
-// Implement the contract structure
-// To be implemented in the front end
 #[near_bindgen]
-impl TreasuryDao {
+impl Contract {
     #[init]
-    pub fn new() -> Self {
-        assert!(env::state_read::<Self>().is_none(), "Already initialized");
-        Self {
-            stakers: Vec::new(),
-            members : UnorderedMap::new(b"m"),
-            proposals : Vec::new(),
-        }
-    }
-
-    pub fn init(&mut self) {
-        assert_self();
-        self.members.insert(&env::current_account_id().to_string(), &0);
-    }
-
-    // delete all members 
-    pub fn delete_all (&mut self) {
-        assert_self();
-        self.members.clear();
-    }
-
-    // get all councils
-    pub fn get_councils(&self) -> Vec<String> {
-        let mut vec = Vec::new();
-        for i in self.members.keys() {
-            if self.members.get(&i).unwrap() == 0 {
-                vec.push(i);
-            }
-        }
-        vec
-    }
-
-    // get all communities
-    pub fn get_communities(&self) -> Vec<String> {
-        let mut vec = Vec::new();
-        for i in self.members.keys() {
-            if self.members.get(&i).unwrap() == 1 {
-                vec.push(i);
-            }
-        }
-        vec
-    }
-
-    pub fn check_member(&self, account:String) -> bool {
-        let mut result=false;
-        for i in 0..self.members.keys_as_vector().len() {
-            if self.members.keys_as_vector().get(i).unwrap() == account {
-                result = true;
-                break;
-            } 
-        }
-        result
-    }
-
-    pub fn check_council (&self, account:String) -> bool {
-        if self.check_member(account.clone()) == false {
-            return false ;
-        }else {
-            if self.members.get(&account).unwrap() == 0 {
-                return true;
-            }else {
-                return false;
-            }
-        }
-    }
-
-    // Create a new proposal 
-    pub fn create_proposal (
-        &mut self,
-        id:String,
-        proposal_type:u8,
-        proposal_name: String,
-        description: String,
-        amount:u128,
-        duration_days: u64,
-        duration_hours: u64,
-        duration_min: u64,
-        receiver:String,
-    ){
-        assert_eq!(
-            self.check_council(env::signer_account_id().to_string()),
-            true,
-            "Proposals can be created only by the councils"
-        );
-        let proposal=CouncilProposal{
-            id:id,
-            proposal_type:proposal_type,
-            proposal_name: proposal_name,
-            description: description,
-            amount:amount,
-            proposal_creator: env::signer_account_id().to_string(),
-            votes_for: 0,
-            votes_against: 0,
-            time_of_creation:env::block_timestamp(),
-            duration_days:duration_days,
-            duration_hours:duration_hours,
-            duration_min:duration_min,
-            list_voters:Vec::new(),
-            votes:Vec::new(),
-            receiver:receiver
+    pub fn new(config: Config, policy: VersionedPolicy) -> Self {
+        let this = Self {
+            config: LazyOption::new(StorageKeys::Config, Some(&config)),
+            policy: LazyOption::new(StorageKeys::Policy, Some(&policy.upgrade())),
+            stakers: HashSet::new(),
+            locked_amount: 0,
+            last_proposal_id: 0,
+            proposals: LookupMap::new(StorageKeys::Proposals),
+            blobs: LookupMap::new(StorageKeys::Blobs),
         };
-        self.proposals.push(proposal);
+        internal_set_factory_info(&FactoryInfo {
+            factory_id: env::predecessor_account_id(),
+            auto_update: true,
+        });
+        this
     }
 
-    // Replace a proposal whith a new one 
-    pub fn replace_proposal(&mut self, proposal: CouncilProposal){
+    /// Should only be called by this contract on migration.
+    /// This is NOOP implementation. KEEP IT if you haven't changed contract state.
+    /// If you have changed state, you need to implement migration from old state (keep the old struct with different name to deserialize it first).
+    /// After migrate goes live on MainNet, return this implementation for next updates.
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate() -> Self {
+        let this: Contract = env::state_read().expect("ERR_CONTRACT_IS_NOT_INITIALIZED");
+        this
+    }
+
+    /// Add a staker 
+    pub fn add_staker(&mut self, account:AccountId) {
+        // assert_eq!(
+        //     env::predecessor_account_id().to_string(),
+        //     "rewarder.testnet".to_string(),
+        //     "Can only be called by the Rewarder contract"
+        // );
+        self.stakers.insert(account);
+    }
+    /// Remove a staker
+    pub fn remove_staker(&mut self, account:AccountId) {
+        // assert_eq!(
+        //     env::predecessor_account_id().to_string(),
+        //     "rewarder.testnet".to_string(),
+        //     "Can only be called by the Rewarder contract"
+        // );
+        self.stakers.remove(&account);
+    }
+
+    /// Remove blob from contract storage and pay back to original storer.
+    /// Only original storer can call this.
+    pub fn remove_blob(&mut self, hash: Base58CryptoHash) -> Promise {
+        let hash: CryptoHash = hash.into();
+        let account_id = self.blobs.remove(&hash).expect("ERR_NO_BLOB");
         assert_eq!(
-            self.check_member(env::signer_account_id().to_string()),
-            true,
-            "Proposals can be created only by members"
+            env::signer_account_id(),
+            account_id,
+            "ERR_INVALID_CALLER"
         );
-        let mut index =0;
-        for i in 0..self.proposals.len(){
-            match self.proposals.get(i){
-                Some(p) => if p.id==proposal.id {
-                    index=i;
-                },
-                None => panic!("There is no PROPOSALs"),
-            }
-        }
-        self.proposals.swap_remove(index);
-        self.proposals.insert(index, proposal);
+        env::storage_remove(&hash);
+        let blob_len = env::register_len(u64::MAX - 1).unwrap();
+        let storage_cost = ((blob_len + 32) as u128) * env::storage_byte_cost();
+        Promise::new(account_id).transfer(storage_cost)
     }
 
-    // Get all proposals 
-    pub fn get_proposals(&self) -> Vec<CouncilProposal>{
-        self.proposals.clone()
+    /// Returns factory information, including if auto update is allowed.
+    pub fn get_factory_info(&self) -> FactoryInfo {
+        internal_get_factory_info()
     }
-
-    // Get a spsific proposal 
-    pub fn get_specific_proposal(&self, id: String) -> CouncilProposal{
-        let mut proposal= CouncilProposal::new();
-        for i in 0..self.proposals.len() {
-            match self.proposals.get(i){
-                Some(p) => if p.id==id {
-                    proposal=p.clone();
-                },
-                None => panic!("There is no DAOs"),
-            }
-        }
-        proposal
-    }
-
-    // add a vote 
-    pub fn add_vote(
-        &mut self,
-        id: String,
-        vote: u8
-    ){
-        if env::block_timestamp() < self.get_specific_proposal(id.clone()).end_time() {
-            assert_eq!(
-                self.check_member(env::signer_account_id().to_string()),
-                true,
-                "You must be one of the dao members to vote"
-            );
-            let proposal =self.get_specific_proposal(id.clone()).create_vote(vote);
-            self.replace_proposal(proposal);
-        }else {
-            panic!("Proposal has been expired");
-        }
-    }
-
-    pub fn get_end_time(&self , id: String) -> u64{
-        self.get_specific_proposal(id.clone()).end_time()
-    }
-
-    // add a council
-    pub fn add_council(&mut self, account:String){
-        assert_eq!(
-            self.check_council(env::signer_account_id().to_string()),
-            true,
-            "To add a council you must be one of the councils"
-        );
-        self.members.insert(&account, &0);
-    }
-
-    // delete all stakers 
-    pub fn delete_stakers (&mut self) {
-        assert_self();
-        self.stakers.clear();
-    }
-
-    // delete specific staker 
-    pub fn delete_specific_staker (&mut self, account:String) {
-        assert_self();
-        for i in 0..self.stakers.len(){
-            if self.stakers.get(i).unwrap() == &account {
-                self.stakers.swap_remove(i);
-                break;
-            }
-        }
-    }
-
-    // get list of stakers
-    pub fn get_stakers (&self) -> Vec<String> {
-        self.stakers.clone()
-    }
-
-    // Check staker
-    pub fn check_staker (&self, account:String) -> bool{
-        let mut existance = false;
-        for i in 0..self.stakers.len() {
-            if self.stakers.get(i).unwrap() == &account {
-                existance = true;
-            }
-        }
-        existance
-    }
-
-    // add a staker
-    pub fn add_staker (&mut self, account:String) {
-        assert_eq!(
-            env::predecessor_account_id().to_string(),
-            "rewarder_contract.testnet".to_string(),
-            "You are not authorized to execute this function"
-        );
-        if self.check_staker(account.clone()) == false{
-            self.stakers.push(account);
-        }
-    }
-
-    // add community
-    pub fn add_community (&mut self,account:String) {
-        if self.check_staker(account.clone()) == true {
-            self.members.insert(&account, &1);
-        }else {
-            panic!("You must be a staker to join community");
-        }
-    }
-
-    // check the proposal and return a message
-    pub fn check_the_proposal(&self,id: String) -> String{
-        let proposal=self.get_specific_proposal(id);
-        let check= proposal.check_proposal();
-        if check==true {
-            let msg="Proposal accepted".to_string();
-            msg
-        }else{
-            let msg="Proposal refused".to_string();
-            msg
-        }
-    }
-
-    // fund function 
-    pub fn fund (&mut self,account:String,amount:u128){
-        assert_eq!(
-            env::signer_account_id().to_string(),
-            "alach.testnet".to_string(),
-            "You are not authorized to execute this function"
-        );
-        let account_lts= "light-token.testnet".to_string().try_into().unwrap();
-        ext_lts::ext(account_lts)
-        .with_static_gas(Gas(2 * TGAS))
-        .with_attached_deposit(1)
-        .ft_transfer(account,(amount*100000000).to_string(),"".to_string());
-    }
-
-    #[payable]
-    pub fn process_borrow(&mut self,eth_recipient:String)->Promise{
-        
-        let mut eth_addr=eth_recipient.clone();
-        if(eth_addr.len()==42){
-            eth_addr.remove(0);
-            eth_addr.remove(0);
-        }
-        let rainbow_account= "enear.goerli.testnet".to_string().try_into().unwrap();
-        let promise =ext_rainbow::ext(rainbow_account)
-        .with_static_gas(Gas(2 * TGAS))
-        .with_attached_deposit(12000000000000000000000000)
-        .migrate_to_ethereum(eth_addr);
-        return promise.then( // Create a promise to callback withdraw_callback
-            Self::ext(env::current_account_id())
-            .with_static_gas(Gas(10 * TGAS))
-            .process_callback()
-            )
-
-
-        
-    }
-
-        
-    #[private] // Public - but only callable by env::current_account_id()
-    pub fn process_callback(&mut self, #[callback_result] call_result: Result<(), PromiseError> ) {
-            if call_result.is_err() {
-            panic!("There was an error contacting the pool contract");
-            }
-        }
 }
+
+/// Stores attached data into blob store and returns hash of it.
+/// Implemented to avoid loading the data into WASM for optimal gas usage.
+#[no_mangle]
+pub extern "C" fn store_blob() {
+    env::setup_panic_hook();
+    let mut contract: Contract = env::state_read().expect("ERR_CONTRACT_IS_NOT_INITIALIZED");
+    let input = env::input().expect("ERR_NO_INPUT");
+    let sha256_hash = env::sha256(&input);
+    assert!(!env::storage_has_key(&sha256_hash), "ERR_ALREADY_EXISTS");
+
+    let blob_len = input.len();
+    let storage_cost = ((blob_len + 32) as u128) * env::storage_byte_cost();
+    assert!(
+        env::attached_deposit() >= storage_cost,
+        "ERR_NOT_ENOUGH_DEPOSIT:{}",
+        storage_cost
+    );
+
+    env::storage_write(&sha256_hash, &input);
+    let mut blob_hash = [0u8; 32];
+    blob_hash.copy_from_slice(&sha256_hash);
+    contract
+        .blobs
+        .insert(&blob_hash, &env::predecessor_account_id());
+    let blob_hash_str = near_sdk::serde_json::to_string(&Base58CryptoHash::from(blob_hash))
+        .unwrap()
+        .into_bytes();
+
+    env::value_return(&blob_hash_str);
+    env::state_write(&contract);
+}
+
 #[cfg(test)]
 mod tests {
-    use std::{ptr::null, arch::x86_64::_mm_undefined_pd};
+    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::testing_env;
+    use near_sdk_sim::to_yocto;
+
+    use crate::proposals::ProposalStatus;
 
     use super::*;
-    //testing init function to initialize the smart contract after deployemnt
-    #[test]
-    fn test_init(){
-        let mut contract = TreasuryDao::new();
-        contract.init();
-        assert_eq!(contract.check_council(env::current_account_id().to_string()), true);
-    }
-    // testing delete all members function 
-    #[test]
-    fn test_delete_all(){
-        let mut contract = TreasuryDao::new();
-        contract.init();
-        contract.delete_all();
-        assert_eq!(contract.check_member(env::current_account_id().to_string()), false);
 
+    fn create_proposal(context: &mut VMContextBuilder, contract: &mut Contract) -> u64 {
+        testing_env!(context.attached_deposit(to_yocto("1")).build());
+        contract.add_proposal(ProposalInput {
+            description: "test".to_string(),
+            kind: ProposalKind::Transfer {
+                token_id: String::from(OLD_BASE_TOKEN),
+                receiver_id: accounts(2).into(),
+                amount: U128(to_yocto("100")),
+                msg: None,
+            },
+        })
     }
 
-    //testing create proposal function
     #[test]
-    fn test_create_proposal(){
-        let mut contract = TreasuryDao::new();
-        contract.init();
-        contract.create_proposal("id".to_string(), 0,"azerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
-        assert_ne!(contract.get_specific_proposal("id".to_string()),null());
-    }
-    
-    //testing replace proposal function
+    fn test_basics() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into()]),
+        );
+        let id = create_proposal(&mut context, &mut contract);
+        assert_eq!(contract.get_proposal(id).proposal.description, "test");
+        assert_eq!(contract.get_proposals(0, 10).len(), 1);
 
-    #[test]
-    fn test_replace_proposal(){
-        let mut contract = TreasuryDao::new();
-        contract.create_proposal("azerty".to_string(), 1,"qwerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
-        let mut proposal = contract::CouncilProposal{
-            id:"azerty".to_string(),
-            proposal_type:0,
-            proposal_name: String::new(),
-            description: String::new(),
-            amount:0,
-            proposal_creator: String::new(),
-            votes_for: 0,
-            votes_against: 0,
-            time_of_creation:0,
-            duration_days:0,
-            duration_hours:0,
-            duration_min:0,
-            list_voters:Vec::new(),
-            votes:Vec::new(),
-            receiver: String::new(),
+        let id = create_proposal(&mut context, &mut contract);
+        contract.act_proposal(id, Action::VoteApprove, None);
+        assert_eq!(
+            contract.get_proposal(id).proposal.status,
+            ProposalStatus::Approved
+        );
 
-        };
-        contract.replace_proposal(proposal);
-        assert_eq!(contract.get_specific_proposal("azerty".to_string()), proposal);
-    }
+        let id = create_proposal(&mut context, &mut contract);
+        // proposal expired, finalize.
+        testing_env!(context
+            .block_timestamp(1_000_000_000 * 24 * 60 * 60 * 8)
+            .build());
+        contract.act_proposal(id, Action::Finalize, None);
+        assert_eq!(
+            contract.get_proposal(id).proposal.status,
+            ProposalStatus::Expired
+        );
 
-    //testing add vote function
-    #[test]
-    fn test_add_vote(){
-        let mut contract = TreasuryDao::new();
-        contract.init();
-        contract.create_proposal("azerty".to_string(), 1,"qwerty".to_string(), "description".to_string(), 1, 0, 0, 1, env::current_account_id());
-        let proposal = contract.get_specific_proposal("azerty".to_string());
-        contract.vote(&proposal.id, 1);
-        assert_eq!(&proposal.votes.len(), 1);
-    }
-    //testing add council function 
-    #[test]
-    fn test_add_council(){
-        let mut contract = TreasuryDao::new();
-        contract.init();
-        contract.add_council("oussema.testnet".to_string);
-        assert!(contract.check_council("oussema.testnet".to_string());)
+        // non council adding proposal per default policy.
+        testing_env!(context
+            .predecessor_account_id(accounts(2))
+            .attached_deposit(to_yocto("1"))
+            .build());
+        let _id = contract.add_proposal(ProposalInput {
+            description: "test".to_string(),
+            kind: ProposalKind::AddMemberToRole {
+                member_id: accounts(2).into(),
+                role: "council".to_string(),
+            },
+        });
     }
 
+    #[test]
+    #[should_panic(expected = "ERR_PERMISSION_DENIED")]
+    fn test_remove_proposal_denied() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into()]),
+        );
+        let id = create_proposal(&mut context, &mut contract);
+        assert_eq!(contract.get_proposal(id).proposal.description, "test");
+        contract.act_proposal(id, Action::RemoveProposal, None);
+    }
+
+    #[test]
+    fn test_remove_proposal_allowed() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut policy = VersionedPolicy::Default(vec![accounts(1).into()]).upgrade();
+        policy.to_policy_mut().roles[1]
+            .permissions
+            .insert("*:RemoveProposal".to_string());
+        let mut contract = Contract::new(Config::test_config(), policy);
+        let id = create_proposal(&mut context, &mut contract);
+        assert_eq!(contract.get_proposal(id).proposal.description, "test");
+        contract.act_proposal(id, Action::RemoveProposal, None);
+        assert_eq!(contract.get_proposals(0, 10).len(), 0);
+    }
+
+    #[test]
+    fn test_vote_expired_proposal() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into()]),
+        );
+        let id = create_proposal(&mut context, &mut contract);
+        testing_env!(context
+            .block_timestamp(1_000_000_000 * 24 * 60 * 60 * 8)
+            .build());
+        contract.act_proposal(id, Action::VoteApprove, None);
+    }
+
+    #[test]
+    #[should_panic(expected = "ERR_ALREADY_VOTED")]
+    fn test_vote_twice() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into(), accounts(2).into()]),
+        );
+        let id = create_proposal(&mut context, &mut contract);
+        contract.act_proposal(id, Action::VoteApprove, None);
+        contract.act_proposal(id, Action::VoteApprove, None);
+    }
+
+    #[test]
+    fn test_add_to_missing_role() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into()]),
+        );
+        testing_env!(context.attached_deposit(to_yocto("1")).build());
+        let id = contract.add_proposal(ProposalInput {
+            description: "test".to_string(),
+            kind: ProposalKind::AddMemberToRole {
+                member_id: accounts(2).into(),
+                role: "missing".to_string(),
+            },
+        });
+        contract.act_proposal(id, Action::VoteApprove, None);
+        let x = contract.get_policy();
+        // still 2 roles: all and council.
+        assert_eq!(x.roles.len(), 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "ERR_INVALID_POLICY")]
+    fn test_fails_adding_invalid_policy() {
+        let mut context = VMContextBuilder::new();
+        testing_env!(context.predecessor_account_id(accounts(1)).build());
+        let mut contract = Contract::new(
+            Config::test_config(),
+            VersionedPolicy::Default(vec![accounts(1).into()]),
+        );
+        testing_env!(context.attached_deposit(to_yocto("1")).build());
+        let _id = contract.add_proposal(ProposalInput {
+            description: "test".to_string(),
+            kind: ProposalKind::ChangePolicy {
+                policy: VersionedPolicy::Default(vec![]),
+            },
+        });
+    }
 }

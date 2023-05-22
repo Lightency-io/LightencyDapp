@@ -1,21 +1,20 @@
 [package]
-name = "treasury"
+name = "treasurydao"
 version = "1.0.0"
 authors = ["Near Inc <hello@near.org>"]
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
-near-sdk = "4.0.0"
+near-sdk = "4.0.0-pre.4"
 uint = { version = "0.9.3", default-features = false }
+near-contract-standards = "4.0.0-pre.4"
+hex = "0.4.2"
 
 [dev-dependencies]
-base64 = "0.13"
-near-primitives = "0.1.0-pre.1"
+near-sdk-sim = "4.0.0-pre.4"
 
 [profile.release]
 codegen-units = 1
